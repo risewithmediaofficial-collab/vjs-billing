@@ -99,19 +99,41 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
 
     const invoiceNumber = generateInvoiceNumber(bills);
     const bill = {
-      id: `BILL-${Date.now()}`,
       invoiceNumber,
+      customer: {
+        name: customer.name,
+        phone: customer.mobile,
+        address: customer.address,
+      },
+      // Keep flat fields for BillPreview (which may still use them)
       customerName: customer.name,
       customerMobile: customer.mobile,
       customerAddress: customer.address,
       items: cartItems.map((item, idx) => ({
-        ...item,
-        ...subtotals[idx],
-        finalTotal: subtotals[idx].totalAmount,
+        productId: item.id,
+        name: item.name,
+        category: item.category,
+        weight: item.weight,
+        purity: item.purity,
+        goldRate: item.goldRate,
+        makingCharge: item.makingCharge,
+        stoneCharge: item.stoneCharge,
+        quantity: item.quantity,
+        goldValue: subtotals[idx].goldValue,
+        subtotal: subtotals[idx].totalAmount,
       })),
-      totalGoldValue, totalMaking, totalStone, totalGST, grossTotal,
-      discount: discountAmount, finalTotal, paymentMethod,
-      staffId: currentStaff.id, staffName: currentStaff.name,
+      goldValue: totalGoldValue,
+      makingTotal: totalMaking,
+      stoneTotal: totalStone,
+      gstAmount: totalGST,
+      gstRate: GST_RATE,
+      subtotal: grossTotal,
+      totalAmount: finalTotal,   // matches DB schema field name
+      finalTotal,                // kept for BillPreview compatibility
+      discount: discountAmount,
+      paymentMethod,
+      staffId: currentStaff.id,
+      staffName: currentStaff.name,
       createdAt: new Date().toISOString(),
     };
     onGenerateBill(bill);

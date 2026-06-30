@@ -1,33 +1,31 @@
 import React, { useState } from 'react';
 import { Gem, Eye, EyeOff, AlertCircle, LogIn, User, Lock } from 'lucide-react';
+import { authApi, setToken } from '../api.js';
 
-export default function LoginScreen({ staff, onLogin }) {
+export default function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
       setError('Please enter your username and password');
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      // Match by name (case-insensitive) and PIN as password
-      const found = staff.find(
-        s => s.name.toLowerCase() === username.trim().toLowerCase() && s.pin === password.trim()
-      );
+    setError('');
+    try {
+      const result = await authApi.login(username.trim(), password.trim());
+      setToken(result.token);
+      onLogin(result.user);
+    } catch (err) {
+      setError(err.message || 'Invalid username or password. Please try again.');
+      setPassword('');
+    } finally {
       setLoading(false);
-      if (found) {
-        setError('');
-        onLogin(found);
-      } else {
-        setError('Invalid username or password. Please try again.');
-        setPassword('');
-      }
-    }, 500);
+    }
   };
 
   const handleKeyDown = (e) => {

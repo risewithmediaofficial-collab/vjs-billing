@@ -25,15 +25,17 @@ export default function InvoicesPage({ bills }) {
     .filter(b => {
       if (!search.trim()) return true;
       const q = search.toLowerCase();
+      const name = (b.customer?.name || b.customerName || '').toLowerCase();
+      const phone = b.customer?.phone || b.customerMobile || '';
       return (
         b.invoiceNumber.toLowerCase().includes(q) ||
-        b.customerName.toLowerCase().includes(q) ||
-        b.customerMobile.includes(q)
+        name.includes(q) ||
+        phone.includes(q)
       );
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  const totalRevenue = filtered.reduce((s, b) => s + b.finalTotal, 0);
+  const totalRevenue = filtered.reduce((s, b) => s + (b.totalAmount ?? b.finalTotal ?? 0), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -97,20 +99,19 @@ export default function InvoicesPage({ bills }) {
       ) : (
         <div className="space-y-3">
           {filtered.map(bill => (
-            <div
-              key={bill.id}
+              <div key={bill._id || bill.id}
               className="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-all group shadow-sm"
             >
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 {/* Customer */}
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
-                    {bill.customerName.charAt(0)}
+                    {(bill.customer?.name || bill.customerName || 'W').charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-gray-800 font-semibold truncate">{bill.customerName}</p>
-                    <p className="text-gray-400 text-xs">{bill.customerMobile}</p>
-                    {bill.customerAddress && <p className="text-gray-400 text-xs truncate">{bill.customerAddress}</p>}
+                    <p className="text-gray-800 font-semibold truncate">{bill.customer?.name || bill.customerName || 'Walk-in Customer'}</p>
+                    <p className="text-gray-400 text-xs">{bill.customer?.phone || bill.customerMobile}</p>
+                    {(bill.customer?.address || bill.customerAddress) && <p className="text-gray-400 text-xs truncate">{bill.customer?.address || bill.customerAddress}</p>}
                   </div>
                 </div>
 
@@ -130,7 +131,7 @@ export default function InvoicesPage({ bills }) {
 
                 {/* Amount & Payment */}
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <p className="text-amber-600 font-bold text-lg">{formatCurrency(bill.finalTotal)}</p>
+                  <p className="text-amber-600 font-bold text-lg">{formatCurrency(bill.totalAmount ?? bill.finalTotal)}</p>
                   <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
                     bill.paymentMethod === 'Cash' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                     bill.paymentMethod === 'UPI' ? 'bg-blue-50 text-blue-700 border border-blue-200' :

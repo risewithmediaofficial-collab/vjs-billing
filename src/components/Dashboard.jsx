@@ -30,8 +30,8 @@ export default function Dashboard({ bills, products, staff, currentStaff }) {
   const isAdmin = currentStaff?.role === 'Admin';
   const today = new Date().toDateString();
   const todayBills = bills.filter(b => new Date(b.createdAt).toDateString() === today);
-  const todayRevenue = todayBills.reduce((sum, b) => sum + b.finalTotal, 0);
-  const totalRevenue = bills.reduce((sum, b) => sum + b.finalTotal, 0);
+  const todayRevenue = todayBills.reduce((sum, b) => sum + (b.totalAmount ?? b.finalTotal ?? 0), 0);
+  const totalRevenue = bills.reduce((sum, b) => sum + (b.totalAmount ?? b.finalTotal ?? 0), 0);
   const lowStock = products.filter(p => p.stock <= 2);
   const recentBills = [...bills].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
 
@@ -134,16 +134,16 @@ export default function Dashboard({ bills, products, staff, currentStaff }) {
           ) : (
             <div className="space-y-3">
               {recentBills.map(bill => (
-                <div key={bill.id} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all border border-gray-100">
+                <div key={bill._id || bill.id} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all border border-gray-100">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                    {bill.customerName.charAt(0)}
+                    {(bill.customer?.name || 'W').charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-gray-800 font-semibold text-sm truncate">{bill.customerName}</p>
+                    <p className="text-gray-800 font-semibold text-sm truncate">{bill.customer?.name || 'Walk-in Customer'}</p>
                     <p className="text-gray-400 text-xs">{bill.invoiceNumber} • {formatDate(bill.createdAt)}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-gray-800 font-bold text-sm">{formatCurrency(bill.finalTotal)}</p>
+                    <p className="text-gray-800 font-bold text-sm">{formatCurrency(bill.totalAmount ?? bill.finalTotal)}</p>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       bill.paymentMethod === 'Cash' ? 'bg-emerald-100 text-emerald-700' :
                       bill.paymentMethod === 'UPI' ? 'bg-blue-100 text-blue-700' :

@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './index.css';
-import { initialProducts, initialStaff, STORES } from './data.js';
+import { STORES } from './data.js';
+import {
+  authApi, productsApi, billsApi, loansApi, staffApi, settingsApi,
+  getToken, getCurrentUser, setCurrentUser, clearToken,
+} from './api.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Dashboard from './components/Dashboard.jsx';
@@ -12,123 +16,152 @@ import SettingsPage from './components/SettingsPage.jsx';
 import BillPreview from './components/BillPreview.jsx';
 import LoansPage from './components/LoansPage.jsx';
 
-const STORAGE_KEYS = {
-  products: 'vjs_products',
-  bills: 'vjs_bills',
-  staff: 'vjs_staff',
-  goldRate: 'vjs_gold_rate',
-  loans: 'vjs_loans',
-};
-
-function loadFromStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveToStorage(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
-}
-
 export default function App() {
-  const [currentStaff, setCurrentStaff] = useState(null);
+  const [currentStaff, setCurrentStaff] = useState(() => getCurrentUser());
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [products, setProducts] = useState(() => {
-    const saved = loadFromStorage(STORAGE_KEYS.products, initialProducts);
-    return (saved || []).map((p, idx) => ({ 
-      ...p, 
-      id: p.id || `PRD-GEN-${idx}-${Math.random().toString(36).substr(2, 5)}`,
-      storeId: p.storeId || STORES[0].id 
-    }));
-  });
-  const [bills, setBills] = useState(() => {
-    const saved = loadFromStorage(STORAGE_KEYS.bills, []);
-    return (saved || []).map(b => ({ ...b, storeId: b.storeId || STORES[0].id }));
-  });
-  const [staff, setStaff] = useState(() => {
-    const saved = loadFromStorage(STORAGE_KEYS.staff, initialStaff) || [];
-    const savedStaff = saved.map(s => ({ ...s, storeId: s.storeId || STORES[0].id }));
-    const hasAdmin = savedStaff.some(s => s.role === 'Admin');
-    if (!hasAdmin) {
-      const adminStaff = initialStaff.find(s => s.role === 'Admin');
-      if (adminStaff) return [...savedStaff, adminStaff];
-    }
-    return savedStaff;
-  });
-  const [goldRate, setGoldRate] = useState(() => loadFromStorage(STORAGE_KEYS.goldRate, 7500));
-  const [loans, setLoans] = useState(() => {
-    const saved = loadFromStorage(STORAGE_KEYS.loans, []);
-    return (saved || []).map(l => ({ ...l, storeId: l.storeId || STORES[0].id }));
-  });
+
+  const [products, setProducts] = useState([]);
+  const [bills, setBills] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [loans, setLoans] = useState([]);
+  const [goldRate, setGoldRateState] = useState(7500);
   const [previewBill, setPreviewBill] = useState(null);
-  
-  // Store context
-  const [currentStore, setCurrentStore] = useState(STORES[0].id);
+  const [currentStore, setCurrentStore] = useState(
+    () => getCurrentUser()?.storeId || STORES[0].id
+  );
 
-  // Persist to localStorage on change
-  useEffect(() => saveToStorage(STORAGE_KEYS.products, products), [products]);
-  useEffect(() => saveToStorage(STORAGE_KEYS.bills, bills), [bills]);
-  useEffect(() => saveToStorage(STORAGE_KEYS.staff, staff), [staff]);
-  useEffect(() => saveToStorage(STORAGE_KEYS.goldRate, goldRate), [goldRate]);
-  useEffect(() => saveToStorage(STORAGE_KEYS.loans, loans), [loans]);
+  const [loading, setLoading] = useState(false);
+  const [dbError, setDbError] = useState('');
 
+  // ── Load all data from backend ─────────────────────────────────────────────
+  const loadData = useCallback(async (storeId) => {
+    if (!getToken()) return;
+    setLoading(true);
+    setDbError('');
+    try {
+      const [prods, bls, stf, lns, settings] = await Promise.all([
+        productsApi.getAll(storeId),
+        billsApi.getAll(storeId),
+        staffApi.getAll(),
+        loansApi.getAll(storeId),
+        settingsApi.get(storeId),
+      ]);
+      setProducts(prods || []);
+      setBills(bls || []);
+      setStaff(stf || []);
+      setLoans(lns || []);
+      setGoldRateState(settings?.goldRate || 7500);
+    } catch (err) {
+      setDbError('⚠️ Cannot connect to backend. Make sure the server is running on port 5000.');
+      console.error('Data load error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load data on mount / store change
+  useEffect(() => {
+    if (currentStaff) {
+      loadData(currentStore);
+    }
+  }, [currentStaff, currentStore, loadData]);
+
+  // ── Auth handlers ──────────────────────────────────────────────────────────
   const handleLogin = (staffMember) => {
     setCurrentStaff(staffMember);
-    if (staffMember.storeId) {
-      setCurrentStore(staffMember.storeId);
-    }
+    setCurrentUser(staffMember);
+    if (staffMember.storeId) setCurrentStore(staffMember.storeId);
   };
 
   const handleLogout = () => {
+    clearToken();
     setCurrentStaff(null);
     setActiveTab('dashboard');
+    setProducts([]);
+    setBills([]);
+    setStaff([]);
+    setLoans([]);
   };
 
-  const handleGenerateBill = (bill) => {
-    // Attach current store to bill
-    const newBill = { ...bill, storeId: currentStore };
-    // Add bill to storage
-    setBills(prev => [newBill, ...prev]);
-    // Deduct stock from inventory
-    setProducts(prev => prev.map(p => {
-      const soldItem = newBill.items.find(i => i.id === p.id);
-      if (soldItem) {
-        return { ...p, stock: Math.max(0, p.stock - soldItem.quantity) };
-      }
-      return p;
-    }));
-    // Show preview
-    setPreviewBill(bill);
-    // Switch to invoices tab
-    setActiveTab('invoices');
+  // ── Bill creation ──────────────────────────────────────────────────────────
+  const handleGenerateBill = async (bill) => {
+    try {
+      const newBill = await billsApi.create({ ...bill, storeId: currentStore });
+      setBills(prev => [newBill, ...prev]);
+      // Refresh products to get updated stock
+      const updatedProducts = await productsApi.getAll(currentStore);
+      setProducts(updatedProducts || []);
+      setPreviewBill(bill);
+      setActiveTab('invoices');
+    } catch (err) {
+      alert('Failed to save bill: ' + err.message);
+    }
   };
 
-  const handleSaveLoan = (loan) => {
-    setLoans(prev => [loan, ...prev]);
+  // ── Loan handlers ──────────────────────────────────────────────────────────
+  const handleSaveLoan = async (loan) => {
+    try {
+      const newLoan = await loansApi.create({ ...loan, storeId: currentStore });
+      setLoans(prev => [newLoan, ...prev]);
+    } catch (err) {
+      alert('Failed to save loan: ' + err.message);
+    }
   };
 
-  const handleUpdateLoan = (updatedLoan) => {
-    setLoans(prev => prev.map(l => l.id === updatedLoan.id ? updatedLoan : l));
+  const handleUpdateLoan = async (updatedLoan) => {
+    try {
+      const saved = await loansApi.update(updatedLoan._id || updatedLoan.id, updatedLoan);
+      setLoans(prev => prev.map(l => (l._id === saved._id ? saved : l)));
+    } catch (err) {
+      alert('Failed to update loan: ' + err.message);
+    }
   };
 
+  // ── Products update (from InventoryPage) ───────────────────────────────────
+  const handleUpdateProducts = async (updaterFnOrArray) => {
+    // Accept both direct array (legacy) and updater function
+    if (typeof updaterFnOrArray === 'function') {
+      setProducts(updaterFnOrArray);
+    } else {
+      setProducts(updaterFnOrArray);
+    }
+    // Refresh from server to keep in sync
+    try {
+      const fresh = await productsApi.getAll(currentStore);
+      setProducts(fresh || []);
+    } catch {}
+  };
+
+  // ── Gold rate update ───────────────────────────────────────────────────────
+  const handleUpdateGoldRate = async (rate) => {
+    setGoldRateState(rate);
+    try {
+      await settingsApi.update(currentStore, { goldRate: rate });
+    } catch (err) {
+      console.error('Failed to save gold rate:', err);
+    }
+  };
+
+  // ── Staff update (from StaffPage) ──────────────────────────────────────────
+  const handleUpdateStaff = async () => {
+    try {
+      const fresh = await staffApi.getAll();
+      setStaff(fresh || []);
+    } catch {}
+  };
+
+  // ── Not logged in ──────────────────────────────────────────────────────────
   if (!currentStaff) {
-    return <LoginScreen staff={staff} onLogin={handleLogin} />;
+    return <LoginScreen onLogin={handleLogin} />;
   }
 
-  // Derived state for current store
+  // ── Derived ───────────────────────────────────────────────────────────────
   const storeProducts = products.filter(p => p.storeId === currentStore);
-  const storeBills = bills.filter(b => b.storeId === currentStore);
-  const storeLoans = loans.filter(l => l.storeId === currentStore);
-
-  const sidebarWidth = sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72';
-  
+  const storeBills    = bills.filter(b => b.storeId === currentStore);
+  const storeLoans    = loans.filter(l => l.storeId === currentStore);
   const canSwitchStore = currentStaff.role === 'Admin';
+  const sidebarWidth   = sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -141,13 +174,11 @@ export default function App() {
         setCollapsed={setSidebarCollapsed}
       />
 
-      {/* Main Content */}
       <main className={`transition-all duration-300 ${sidebarWidth} min-h-screen`}>
         {/* Top bar */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Hamburger for mobile is in Sidebar */}
               <div className="hidden lg:block">
                 <button
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -162,13 +193,13 @@ export default function App() {
               </div>
               <div className="flex items-center gap-4">
                 <h2 className="text-gray-800 font-bold text-lg capitalize lg:block hidden">
-                  {activeTab === 'billing' ? 'New Bill' :
-                   activeTab === 'invoices' ? 'Invoices' :
+                  {activeTab === 'billing'   ? 'New Bill'  :
+                   activeTab === 'invoices'  ? 'Invoices'  :
                    activeTab === 'inventory' ? 'Inventory' :
-                   activeTab === 'loans' ? 'Gold Loans' :
+                   activeTab === 'loans'     ? 'Gold Loans' :
                    activeTab}
                 </h2>
-                
+
                 {/* Store Selector */}
                 {canSwitchStore ? (
                   <select
@@ -177,9 +208,7 @@ export default function App() {
                     className="bg-amber-50 border border-amber-300 text-amber-700 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-500 font-medium"
                   >
                     {STORES.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
+                      <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
                 ) : (
@@ -191,12 +220,23 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* DB status */}
+              {dbError && (
+                <span className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-lg hidden sm:block">
+                  {dbError}
+                </span>
+              )}
+              {loading && (
+                <svg className="animate-spin h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+              )}
               {/* Gold rate badge */}
               <div className="hidden sm:flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                 <span className="text-amber-700 font-semibold text-sm">₹{goldRate.toLocaleString('en-IN')}/g</span>
               </div>
-
               {/* Staff badge */}
               <div className="flex items-center gap-2 bg-gray-100 border border-gray-200 rounded-xl px-3 py-1.5">
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-xs">
@@ -225,32 +265,36 @@ export default function App() {
             <InvoicesPage bills={storeBills} />
           )}
           {activeTab === 'loans' && (
-            <LoansPage 
-              loans={storeLoans} 
-              onSaveLoan={handleSaveLoan} 
+            <LoansPage
+              loans={storeLoans}
+              onSaveLoan={handleSaveLoan}
               onUpdateLoan={handleUpdateLoan}
               currentStaff={currentStaff}
               currentStore={currentStore}
             />
           )}
           {activeTab === 'inventory' && (
-            <InventoryPage 
-              products={products} 
-              onUpdateProducts={setProducts} 
+            <InventoryPage
+              products={products}
+              onUpdateProducts={handleUpdateProducts}
               currentStore={currentStore}
               currentStaff={currentStaff}
             />
           )}
           {activeTab === 'staff' && (
-            <StaffPage staff={staff} onUpdateStaff={setStaff} currentStaff={currentStaff} />
+            <StaffPage
+              staff={staff}
+              onUpdateStaff={handleUpdateStaff}
+              currentStaff={currentStaff}
+            />
           )}
           {activeTab === 'settings' && (
-            <SettingsPage goldRate={goldRate} onUpdateGoldRate={setGoldRate} />
+            <SettingsPage goldRate={goldRate} onUpdateGoldRate={handleUpdateGoldRate} />
           )}
         </div>
       </main>
 
-      {/* Bill Preview Modal (auto-shown after generating bill) */}
+      {/* Bill Preview Modal */}
       {previewBill && (
         <BillPreview bill={previewBill} onClose={() => setPreviewBill(null)} />
       )}
