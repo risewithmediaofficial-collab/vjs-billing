@@ -1,156 +1,137 @@
 import React, { useState } from 'react';
-import { Gem, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Gem, Eye, EyeOff, AlertCircle, LogIn, User, Lock } from 'lucide-react';
 
 export default function LoginScreen({ staff, onLogin }) {
-  const [selectedStaff, setSelectedStaff] = useState(null);
-  const [pin, setPin] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [showPin, setShowPin] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = () => {
-    if (!selectedStaff) {
-      setError('Please select a staff member');
+    if (!username.trim() || !password.trim()) {
+      setError('Please enter your username and password');
       return;
     }
-    if (selectedStaff.pin === pin) {
-      setError('');
-      onLogin(selectedStaff);
-    } else {
-      setError('Incorrect PIN. Please try again.');
-      setPin('');
-    }
+    setLoading(true);
+    setTimeout(() => {
+      // Match by name (case-insensitive) and PIN as password
+      const found = staff.find(
+        s => s.name.toLowerCase() === username.trim().toLowerCase() && s.pin === password.trim()
+      );
+      setLoading(false);
+      if (found) {
+        setError('');
+        onLogin(found);
+      } else {
+        setError('Invalid username or password. Please try again.');
+        setPassword('');
+      }
+    }, 500);
   };
 
-  const handlePinInput = (digit) => {
-    if (pin.length < 6) {
-      setPin(prev => prev + digit);
-      setError('');
-    }
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleLogin();
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0718] via-[#0f0c1e] to-[#1a0a2e] flex items-center justify-center p-4">
-      {/* Background decoration */}
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50 flex items-center justify-center p-4">
+      {/* Soft background circles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-900/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-amber-900/10 rounded-full blur-3xl" />
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-amber-100/60 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-orange-100/60 rounded-full blur-3xl" />
       </div>
 
-      <div className="w-full max-w-md relative animate-fade-in">
-        {/* Header */}
+      <div className="w-full max-w-sm relative animate-fade-in">
+        {/* Logo / Header */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-amber-500/40 gold-pulse">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-amber-200 gold-pulse">
             <Gem size={36} className="text-white" />
           </div>
-          <h1 className="font-display text-4xl font-bold text-white mb-1">VJS Jewellery</h1>
-          <p className="text-purple-300 text-sm tracking-widest uppercase font-medium">Billing System</p>
+          <h1 className="font-display text-3xl font-bold text-gray-800 mb-1">VJS Jewellery</h1>
+          <p className="text-amber-600 text-sm tracking-widest uppercase font-semibold">Billing System</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white/5 backdrop-blur-xl border border-purple-800/40 rounded-2xl p-8 shadow-2xl">
-          <h2 className="text-white font-semibold text-lg mb-6 flex items-center gap-2">
-            <Lock size={18} className="text-amber-400" />
-            Staff Login
-          </h2>
-
-          {/* Staff Selection */}
-          <div className="mb-6">
-            <label className="text-purple-300 text-sm font-medium mb-3 block">Select Staff Member</label>
-            <div className="grid grid-cols-2 gap-2">
-              {staff.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => { setSelectedStaff(s); setPin(''); setError(''); }}
-                  className={`
-                    p-3 rounded-xl border text-left transition-all duration-200
-                    ${selectedStaff?.id === s.id
-                      ? 'border-amber-400/60 bg-amber-400/10 text-white'
-                      : 'border-purple-800/40 bg-white/5 text-purple-300 hover:border-purple-600 hover:bg-purple-900/20'
-                    }
-                  `}
-                >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center text-white font-bold text-sm mb-2">
-                    {s.name.charAt(0)}
-                  </div>
-                  <p className="font-medium text-sm truncate">{s.name}</p>
-                  <p className="text-xs opacity-60">{s.role}</p>
-                </button>
-              ))}
-            </div>
+        {/* Login Card */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+          <div className="flex items-center gap-2 mb-6">
+            <LogIn size={20} className="text-amber-500" />
+            <h2 className="text-gray-800 font-bold text-xl">Staff Login</h2>
           </div>
 
-          {/* PIN Input */}
-          {selectedStaff && (
-            <div className="mb-6 animate-fade-in">
-              <label className="text-purple-300 text-sm font-medium mb-3 block">Enter PIN</label>
-              <div className="relative mb-4">
+          <div className="space-y-4">
+            {/* Username */}
+            <div>
+              <label className="text-sm text-gray-600 font-medium mb-1.5 block">Username</label>
+              <div className="relative">
+                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
-                  type={showPin ? 'text' : 'password'}
-                  value={pin}
-                  onChange={e => { setPin(e.target.value); setError(''); }}
-                  onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                  placeholder="Enter your PIN"
-                  maxLength={6}
-                  className="w-full bg-white/5 border border-purple-800/40 rounded-xl px-4 py-3 text-white placeholder-purple-500
-                    focus:outline-none focus:border-amber-400/60 focus:bg-white/10 transition-all text-center text-2xl tracking-[0.5em]"
+                  type="text"
+                  value={username}
+                  onChange={e => { setUsername(e.target.value); setError(''); }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter your name"
+                  autoFocus
+                  className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-gray-800 text-sm
+                    placeholder-gray-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all bg-gray-50"
                 />
-                <button
-                  onClick={() => setShowPin(!showPin)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 hover:text-white transition-colors"
-                >
-                  {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-
-              {/* PIN Pad */}
-              <div className="grid grid-cols-3 gap-2">
-                {[1,2,3,4,5,6,7,8,9,'C',0,'✓'].map((k) => (
-                  <button
-                    key={k}
-                    onClick={() => {
-                      if (k === 'C') setPin(p => p.slice(0, -1));
-                      else if (k === '✓') handleLogin();
-                      else handlePinInput(String(k));
-                    }}
-                    className={`
-                      py-3 rounded-xl font-semibold text-lg transition-all duration-150 active:scale-95
-                      ${k === '✓'
-                        ? 'bg-gradient-to-r from-amber-400 to-amber-600 text-white shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50'
-                        : k === 'C'
-                        ? 'bg-red-900/30 text-red-400 border border-red-800/40 hover:bg-red-900/50'
-                        : 'bg-white/5 text-white border border-purple-800/40 hover:bg-purple-900/30 hover:border-purple-600'
-                      }
-                    `}
-                  >
-                    {k}
-                  </button>
-                ))}
               </div>
             </div>
-          )}
+
+            {/* Password */}
+            <div>
+              <label className="text-sm text-gray-600 font-medium mb-1.5 block">Password</label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(''); }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter your password"
+                  className="w-full border border-gray-200 rounded-xl pl-10 pr-11 py-3 text-gray-800 text-sm
+                    placeholder-gray-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all bg-gray-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+          </div>
 
           {/* Error */}
           {error && (
-            <div className="flex items-center gap-2 text-red-400 bg-red-900/20 border border-red-800/40 rounded-xl px-4 py-3 mb-4 animate-fade-in">
-              <AlertCircle size={16} />
+            <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mt-4 animate-fade-in">
+              <AlertCircle size={16} className="shrink-0" />
               <span className="text-sm">{error}</span>
             </div>
           )}
 
           {/* Login Button */}
-          {selectedStaff && (
-            <button
-              onClick={handleLogin}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white font-semibold
-                hover:from-purple-500 hover:to-violet-500 transition-all duration-200 shadow-lg shadow-purple-900/50
-                hover:shadow-purple-900/70 active:scale-[0.98] animate-fade-in"
-            >
-              Login as {selectedStaff.name}
-            </button>
-          )}
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            className="w-full mt-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold
+              hover:from-amber-400 hover:to-orange-400 transition-all duration-200 shadow-lg shadow-amber-200
+              active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+            ) : (
+              <LogIn size={18} />
+            )}
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
 
-          <p className="text-center text-purple-500 text-xs mt-4">
-            Default PINs: 1234, 5678, 9012, 3456, Admin: 0000
+          <p className="text-center text-gray-400 text-xs mt-5">
+            Use your staff name as username and your PIN as password
           </p>
         </div>
       </div>

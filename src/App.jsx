@@ -41,7 +41,11 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [products, setProducts] = useState(() => {
     const saved = loadFromStorage(STORAGE_KEYS.products, initialProducts);
-    return (saved || []).map(p => ({ ...p, storeId: p.storeId || STORES[0].id }));
+    return (saved || []).map((p, idx) => ({ 
+      ...p, 
+      id: p.id || `PRD-GEN-${idx}-${Math.random().toString(36).substr(2, 5)}`,
+      storeId: p.storeId || STORES[0].id 
+    }));
   });
   const [bills, setBills] = useState(() => {
     const saved = loadFromStorage(STORAGE_KEYS.bills, []);
@@ -124,10 +128,10 @@ export default function App() {
 
   const sidebarWidth = sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72';
   
-  const canSwitchStore = currentStaff.role === 'Admin' || currentStaff.role === 'Manager';
+  const canSwitchStore = currentStaff.role === 'Admin';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0718] via-[#0f0c1e] to-[#130d22]">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -140,14 +144,14 @@ export default function App() {
       {/* Main Content */}
       <main className={`transition-all duration-300 ${sidebarWidth} min-h-screen`}>
         {/* Top bar */}
-        <div className="sticky top-0 z-10 backdrop-blur-xl bg-black/20 border-b border-purple-900/20 px-6 py-4">
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {/* Hamburger for mobile is in Sidebar */}
               <div className="hidden lg:block">
                 <button
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-purple-400 flex items-center justify-center transition-colors"
+                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <rect y="2" width="16" height="2" rx="1" />
@@ -157,7 +161,7 @@ export default function App() {
                 </button>
               </div>
               <div className="flex items-center gap-4">
-                <h2 className="text-white font-semibold capitalize lg:block hidden">
+                <h2 className="text-gray-800 font-bold text-lg capitalize lg:block hidden">
                   {activeTab === 'billing' ? 'New Bill' :
                    activeTab === 'invoices' ? 'Invoices' :
                    activeTab === 'inventory' ? 'Inventory' :
@@ -170,16 +174,16 @@ export default function App() {
                   <select
                     value={currentStore}
                     onChange={(e) => setCurrentStore(e.target.value)}
-                    className="bg-white/5 border border-purple-800/40 text-purple-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-400/60"
+                    className="bg-amber-50 border border-amber-300 text-amber-700 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-500 font-medium"
                   >
                     {STORES.map(s => (
-                      <option key={s.id} value={s.id} className="bg-[#0f0c1e] text-white">
+                      <option key={s.id} value={s.id}>
                         {s.name}
                       </option>
                     ))}
                   </select>
                 ) : (
-                  <span className="text-purple-400 text-sm hidden sm:inline-block">
+                  <span className="text-gray-500 text-sm hidden sm:inline-block bg-gray-100 px-3 py-1 rounded-lg">
                     {STORES.find(s => s.id === currentStore)?.name}
                   </span>
                 )}
@@ -188,17 +192,17 @@ export default function App() {
 
             <div className="flex items-center gap-3">
               {/* Gold rate badge */}
-              <div className="hidden sm:flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 rounded-xl px-3 py-1.5">
+              <div className="hidden sm:flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-amber-400 font-semibold text-sm">₹{goldRate.toLocaleString('en-IN')}/g</span>
+                <span className="text-amber-700 font-semibold text-sm">₹{goldRate.toLocaleString('en-IN')}/g</span>
               </div>
 
               {/* Staff badge */}
-              <div className="flex items-center gap-2 bg-white/5 border border-purple-800/40 rounded-xl px-3 py-1.5">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center text-white font-bold text-xs">
+              <div className="flex items-center gap-2 bg-gray-100 border border-gray-200 rounded-xl px-3 py-1.5">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-xs">
                   {currentStaff.name.charAt(0)}
                 </div>
-                <span className="text-white text-sm font-medium hidden sm:block">{currentStaff.name}</span>
+                <span className="text-gray-700 text-sm font-medium hidden sm:block">{currentStaff.name}</span>
               </div>
             </div>
           </div>
@@ -207,7 +211,7 @@ export default function App() {
         {/* Page Content */}
         <div className="p-6">
           {activeTab === 'dashboard' && (
-            <Dashboard bills={storeBills} products={storeProducts} staff={staff} />
+            <Dashboard bills={storeBills} products={storeProducts} staff={staff} currentStaff={currentStaff} />
           )}
           {activeTab === 'billing' && (
             <BillingPage
@@ -233,11 +237,12 @@ export default function App() {
             <InventoryPage 
               products={products} 
               onUpdateProducts={setProducts} 
-              currentStore={currentStore} 
+              currentStore={currentStore}
+              currentStaff={currentStaff}
             />
           )}
           {activeTab === 'staff' && (
-            <StaffPage staff={staff} onUpdateStaff={setStaff} />
+            <StaffPage staff={staff} onUpdateStaff={setStaff} currentStaff={currentStaff} />
           )}
           {activeTab === 'settings' && (
             <SettingsPage goldRate={goldRate} onUpdateGoldRate={setGoldRate} />

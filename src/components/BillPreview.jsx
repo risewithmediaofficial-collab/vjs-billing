@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { X, Printer, Download, MessageCircle, Mail, Share2 } from 'lucide-react';
+import { X, Printer, Download, MessageCircle, Mail } from 'lucide-react';
 import { formatCurrency, formatDate, SHOP_INFO } from '../data.js';
 
 function BillContent({ bill }) {
@@ -153,7 +153,7 @@ export default function BillPreview({ bill, onClose }) {
   };
 
   const handleDownloadPDF = () => {
-    handlePrint(); // Opens print dialog where user can save as PDF
+    handlePrint();
   };
 
   const handleWhatsApp = () => {
@@ -179,12 +179,12 @@ export default function BillPreview({ bill, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm overflow-y-auto py-8 px-4">
-      <div className="w-full max-w-2xl animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-8 px-4">
+      <div className="w-full max-w-2xl bg-white rounded-2xl p-6 shadow-2xl border border-gray-200 animate-fade-in">
         {/* Modal Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-bold text-xl">Bill Preview</h2>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+          <h2 className="text-gray-850 font-bold text-xl">Bill Preview</h2>
+          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -193,28 +193,28 @@ export default function BillPreview({ bill, onClose }) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <button
             onClick={handlePrint}
-            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white font-semibold text-sm hover:from-purple-500 hover:to-violet-500 transition-all shadow-lg"
+            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-semibold text-sm transition-all shadow-sm"
           >
             <Printer size={16} />
             Print
           </button>
           <button
             onClick={handleDownloadPDF}
-            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold text-sm hover:from-blue-500 hover:to-cyan-500 transition-all shadow-lg"
+            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-semibold text-sm transition-all shadow-sm"
           >
             <Download size={16} />
             Save PDF
           </button>
           <button
             onClick={handleWhatsApp}
-            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold text-sm hover:from-green-500 hover:to-emerald-500 transition-all shadow-lg"
+            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-semibold text-sm transition-all shadow-sm"
           >
             <MessageCircle size={16} />
             WhatsApp
           </button>
           <button
             onClick={handleEmail}
-            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-orange-600 to-red-600 text-white font-semibold text-sm hover:from-orange-500 hover:to-red-500 transition-all shadow-lg"
+            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm transition-all shadow-sm"
           >
             <Mail size={16} />
             Email
@@ -222,14 +222,14 @@ export default function BillPreview({ bill, onClose }) {
         </div>
 
         {/* Bill Preview */}
-        <div className="rounded-2xl overflow-hidden shadow-2xl border border-gray-200">
+        <div className="rounded-xl overflow-hidden border border-gray-200 bg-gray-50 p-4">
           <div ref={printRef} id="bill-print-area">
             <BillContent bill={bill} />
           </div>
         </div>
 
         {/* Thermal print note */}
-        <p className="text-center text-purple-500 text-xs mt-3">
+        <p className="text-center text-gray-400 text-xs mt-3">
           For thermal (58mm/80mm) printing, use browser print and select your thermal printer
         </p>
       </div>

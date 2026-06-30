@@ -19,7 +19,7 @@ const navItems = [
   { id: 'billing', label: 'New Bill', icon: ShoppingCart },
   { id: 'invoices', label: 'Invoices', icon: FileText },
   { id: 'loans', label: 'Gold Loans', icon: Wallet },
-  { id: 'inventory', label: 'Inventory', icon: Package, adminOnly: true },
+  { id: 'inventory', label: 'Inventory', icon: Package },
   { id: 'staff', label: 'Staff', icon: Users, adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];
@@ -30,7 +30,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
       {/* Mobile overlay */}
       {!collapsed && (
         <div
-          className="fixed inset-0 bg-black/60 z-20 lg:hidden"
+          className="fixed inset-0 bg-black/40 z-20 lg:hidden"
           onClick={() => setCollapsed(true)}
         />
       )}
@@ -38,26 +38,25 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
       <aside
         className={`
           fixed top-0 left-0 h-full z-30 flex flex-col
-          bg-gradient-to-b from-[#0f0c1e] to-[#1a1232]
-          border-r border-purple-900/40
-          transition-all duration-300 ease-in-out
+          bg-white border-r border-gray-200
+          transition-all duration-300 ease-in-out shadow-lg
           ${collapsed ? '-translate-x-full lg:translate-x-0 lg:w-20' : 'translate-x-0 w-72'}
         `}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-5 py-6 border-b border-purple-900/40">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/30">
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shrink-0 shadow-md shadow-amber-300/50">
             <Gem size={20} className="text-white" />
           </div>
           {!collapsed && (
             <div className="animate-fade-in overflow-hidden">
-              <p className="font-display text-lg font-bold text-white leading-tight">VJS</p>
-              <p className="text-xs text-purple-300 font-medium tracking-widest">JEWELLERY</p>
+              <p className="font-display text-lg font-bold text-gray-800 leading-tight">VJS</p>
+              <p className="text-xs text-amber-600 font-semibold tracking-widest">JEWELLERY</p>
             </div>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="ml-auto lg:flex hidden text-purple-400 hover:text-white transition-colors"
+            className="ml-auto lg:flex hidden text-gray-400 hover:text-gray-700 transition-colors"
           >
             {collapsed ? <ChevronRight size={18} /> : <X size={18} />}
           </button>
@@ -70,26 +69,26 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
               key={id}
               onClick={() => setActiveTab(id)}
               className={`
-                w-full flex items-center gap-3 px-3 py-3 rounded-xl
+                w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
                 transition-all duration-200 group relative
                 ${activeTab === id
-                  ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-lg shadow-purple-900/50'
-                  : 'text-purple-300 hover:bg-purple-900/30 hover:text-white'
+                  ? 'bg-amber-50 text-amber-700 border border-amber-200 shadow-sm'
+                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
                 }
               `}
             >
-              <Icon size={20} className="shrink-0" />
+              <Icon size={20} className={`shrink-0 ${activeTab === id ? 'text-amber-600' : ''}`} />
               {!collapsed && (
-                <span className="font-medium text-sm animate-fade-in">{label}</span>
+                <span className={`font-medium text-sm animate-fade-in ${activeTab === id ? 'text-amber-700' : ''}`}>{label}</span>
               )}
               {activeTab === id && !collapsed && (
-                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-400" />
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-500" />
               )}
               {/* Tooltip for collapsed state */}
               {collapsed && (
-                <div className="absolute left-full ml-3 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg
+                <div className="absolute left-full ml-3 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg
                   opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50
-                  border border-purple-800/50 shadow-xl transition-opacity">
+                  border border-gray-700 shadow-xl transition-opacity">
                   {label}
                 </div>
               )}
@@ -99,21 +98,21 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
 
         {/* Staff Info */}
         {currentStaff && (
-          <div className="p-3 border-t border-purple-900/40">
-            <div className={`flex items-center gap-3 px-3 py-3 rounded-xl bg-purple-900/20`}>
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shrink-0 text-white font-bold text-sm">
+          <div className="p-3 border-t border-gray-100">
+            <div className={`flex items-center gap-3 px-3 py-3 rounded-xl bg-gray-50 border border-gray-200`}>
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shrink-0 text-white font-bold text-sm shadow-sm">
                 {currentStaff.name.charAt(0)}
               </div>
               {!collapsed && (
                 <div className="flex-1 min-w-0 animate-fade-in">
-                  <p className="text-white text-sm font-semibold truncate">{currentStaff.name}</p>
-                  <p className="text-purple-400 text-xs truncate">{currentStaff.role}</p>
+                  <p className="text-gray-800 text-sm font-semibold truncate">{currentStaff.name}</p>
+                  <p className="text-gray-400 text-xs truncate">{currentStaff.role}</p>
                 </div>
               )}
               {!collapsed && (
                 <button
                   onClick={onLogout}
-                  className="text-purple-400 hover:text-red-400 transition-colors"
+                  className="text-gray-400 hover:text-red-500 transition-colors"
                   title="Logout"
                 >
                   <LogOut size={16} />
@@ -127,7 +126,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
       {/* Mobile toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="fixed top-4 left-4 z-40 lg:hidden w-10 h-10 rounded-xl bg-purple-800 text-white flex items-center justify-center shadow-lg"
+        className="fixed top-4 left-4 z-40 lg:hidden w-10 h-10 rounded-xl bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-md"
       >
         <Menu size={20} />
       </button>
