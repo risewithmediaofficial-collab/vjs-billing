@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './index.css';
 import { STORES } from './data.js';
 import {
-  authApi, productsApi, billsApi, loansApi, staffApi, settingsApi,
+  authApi, productsApi, billsApi, loansApi, staffApi, settingsApi, schemesApi,
   getToken, getCurrentUser, setCurrentUser, clearToken,
 } from './api.js';
 import LoginScreen from './components/LoginScreen.jsx';
@@ -15,6 +15,7 @@ import StaffPage from './components/StaffPage.jsx';
 import SettingsPage from './components/SettingsPage.jsx';
 import BillPreview from './components/BillPreview.jsx';
 import LoansPage from './components/LoansPage.jsx';
+import SchemesPage from './components/SchemesPage.jsx';
 
 export default function App() {
   const [currentStaff, setCurrentStaff] = useState(() => getCurrentUser());
@@ -25,7 +26,9 @@ export default function App() {
   const [bills, setBills] = useState([]);
   const [staff, setStaff] = useState([]);
   const [loans, setLoans] = useState([]);
+  const [schemes, setSchemes] = useState([]);
   const [goldRate, setGoldRateState] = useState(7500);
+  const [silverRate, setSilverRateState] = useState(85);
   const [previewBill, setPreviewBill] = useState(null);
   const [currentStore, setCurrentStore] = useState(
     () => getCurrentUser()?.storeId || STORES[0].id
@@ -40,18 +43,21 @@ export default function App() {
     setLoading(true);
     setDbError('');
     try {
-      const [prods, bls, stf, lns, settings] = await Promise.all([
+      const [prods, bls, stf, lns, settings, schs] = await Promise.all([
         productsApi.getAll(storeId),
         billsApi.getAll(storeId),
         staffApi.getAll(),
         loansApi.getAll(storeId),
         settingsApi.get(storeId),
+        schemesApi.getAll(storeId),
       ]);
       setProducts(prods || []);
       setBills(bls || []);
       setStaff(stf || []);
       setLoans(lns || []);
+      setSchemes(schs || []);
       setGoldRateState(settings?.goldRate || 7500);
+      setSilverRateState(settings?.silverRate || 85);
     } catch (err) {
       setDbError('⚠️ Cannot connect to backend. Make sure the server is running on port 5000.');
       console.error('Data load error:', err);
@@ -82,6 +88,7 @@ export default function App() {
     setBills([]);
     setStaff([]);
     setLoans([]);
+    setSchemes([]);
   };
 
   // ── Bill creation ──────────────────────────────────────────────────────────
@@ -95,7 +102,8 @@ export default function App() {
       setPreviewBill(bill);
       setActiveTab('invoices');
     } catch (err) {
-      alert('Failed to save bill: ' + err.message);
+      // Re-throw so BillingPage's catch block shows an inline error banner
+      throw err;
     }
   };
 
@@ -116,6 +124,27 @@ export default function App() {
     } catch (err) {
       alert('Failed to update loan: ' + err.message);
     }
+  };
+
+  // ── Schemes handlers ────────────────────────────────────────────────────────
+  const handleEnrollScheme = async (data) => {
+    const newScheme = await schemesApi.create({ ...data, storeId: currentStore });
+    setSchemes(prev => [newScheme, ...prev]);
+  };
+
+  const handlePayScheme = async (id, data) => {
+    const updated = await schemesApi.pay(id, data);
+    setSchemes(prev => prev.map(s => (s._id === id ? updated : s)));
+  };
+
+  const handleRedeemScheme = async (id) => {
+    const updated = await schemesApi.redeem(id);
+    setSchemes(prev => prev.map(s => (s._id === id ? updated : s)));
+  };
+
+  const handleCancelScheme = async (id) => {
+    const updated = await schemesApi.cancel(id);
+    setSchemes(prev => prev.map(s => (s._id === id ? updated : s)));
   };
 
   // ── Product CRUD handlers (all call MongoDB API) ──────────────────────────────
@@ -147,6 +176,16 @@ export default function App() {
     }
   };
 
+  // ── Silver rate update ─────────────────────────────────────────────────────
+  const handleUpdateSilverRate = async (rate) => {
+    setSilverRateState(rate);
+    try {
+      await settingsApi.update(currentStore, { silverRate: rate });
+    } catch (err) {
+      console.error('Failed to save silver rate:', err);
+    }
+  };
+
   // ── Staff update (from StaffPage) ──────────────────────────────────────────
   const handleUpdateStaff = async () => {
     try {
@@ -164,6 +203,7 @@ export default function App() {
   const storeProducts = products.filter(p => p.storeId === currentStore);
   const storeBills    = bills.filter(b => b.storeId === currentStore);
   const storeLoans    = loans.filter(l => l.storeId === currentStore);
+  const storeSchemes  = schemes.filter(s => s.storeId === currentStore);
   const canSwitchStore = currentStaff.role === 'Admin';
   const sidebarWidth   = sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72';
 
@@ -201,6 +241,7 @@ export default function App() {
                    activeTab === 'invoices'  ? 'Invoices'  :
                    activeTab === 'inventory' ? 'Inventory' :
                    activeTab === 'loans'     ? 'Gold Loans' :
+                   activeTab === 'schemes'   ? 'Gold Schemes' :
                    activeTab}
                 </h2>
 
@@ -239,7 +280,12 @@ export default function App() {
               {/* Gold rate badge */}
               <div className="hidden sm:flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-amber-700 font-semibold text-sm">₹{goldRate.toLocaleString('en-IN')}/g</span>
+                <span className="text-amber-700 font-semibold text-sm">Gold ₹{goldRate.toLocaleString('en-IN')}/g</span>
+              </div>
+              {/* Silver rate badge */}
+              <div className="hidden sm:flex items-center gap-2 bg-slate-50 border border-blue-200 rounded-xl px-3 py-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                <span className="text-blue-700 font-semibold text-sm">Silver ₹{silverRate.toLocaleString('en-IN')}/g</span>
               </div>
               {/* Staff badge */}
               <div className="flex items-center gap-2 bg-gray-100 border border-gray-200 rounded-xl px-3 py-1.5">
@@ -265,6 +311,8 @@ export default function App() {
               onGenerateBill={handleGenerateBill}
               onAddProduct={handleCreateProduct}
               currentStore={currentStore}
+              goldRate={goldRate}
+              silverRate={silverRate}
             />
           )}
           {activeTab === 'invoices' && (
@@ -279,6 +327,18 @@ export default function App() {
               currentStore={currentStore}
             />
           )}
+          {activeTab === 'schemes' && (
+            <SchemesPage
+              schemes={storeSchemes}
+              onEnrollScheme={handleEnrollScheme}
+              onPayScheme={handlePayScheme}
+              onRedeemScheme={handleRedeemScheme}
+              onCancelScheme={handleCancelScheme}
+              currentStore={currentStore}
+              goldRate={goldRate}
+              silverRate={silverRate}
+            />
+          )}
           {activeTab === 'inventory' && (
             <InventoryPage
               products={products}
@@ -287,6 +347,8 @@ export default function App() {
               onDeleteProduct={handleDeleteProduct}
               currentStore={currentStore}
               currentStaff={currentStaff}
+              goldRate={goldRate}
+              silverRate={silverRate}
             />
           )}
           {activeTab === 'staff' && (
@@ -297,7 +359,12 @@ export default function App() {
             />
           )}
           {activeTab === 'settings' && (
-            <SettingsPage goldRate={goldRate} onUpdateGoldRate={handleUpdateGoldRate} />
+            <SettingsPage
+              goldRate={goldRate}
+              onUpdateGoldRate={handleUpdateGoldRate}
+              silverRate={silverRate}
+              onUpdateSilverRate={handleUpdateSilverRate}
+            />
           )}
         </div>
       </main>

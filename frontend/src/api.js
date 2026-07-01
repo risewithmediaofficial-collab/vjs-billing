@@ -110,3 +110,12 @@ export const settingsApi = {
   get:    (storeId)       => request(`/settings/${storeId}`),
   update: (storeId, data) => request(`/settings/${storeId}`, { method: 'PUT', body: JSON.stringify(data) }),
 };
+
+// ── Schemes ──────────────────────────────────────────────────────────────────
+export const schemesApi = {
+  getAll: (storeId)       => request(`/schemes${storeId ? `?storeId=${storeId}` : ''}`),
+  create: (data)          => request('/schemes', { method: 'POST', body: JSON.stringify(data) }),
+  pay:    (id, data)       => request(`/schemes/${id}/pay`, { method: 'PUT', body: JSON.stringify(data) }),
+  redeem: (id, data)       => request(`/schemes/${id}/redeem`, { method: 'PUT', body: JSON.stringify(data) }),
+  cancel: (id)            => request(`/schemes/${id}/cancel`, { method: 'PUT' }),
+};

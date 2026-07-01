@@ -2,8 +2,9 @@ const mongoose = require('mongoose');
 
 const SettingSchema = new mongoose.Schema(
   {
-    storeId:  { type: String, required: true, unique: true },
-    goldRate: { type: Number, default: 7500 },
+    storeId:    { type: String, required: true, unique: true },
+    goldRate:   { type: Number, default: 7500 },
+    silverRate: { type: Number, default: 85 },
     shopInfo: {
       name:      { type: String, default: 'VJS Jewellery' },
       address:   { type: String, default: '123, Gold Market Street, Hyderabad - 500001' },

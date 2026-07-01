@@ -31,8 +31,29 @@ router.get('/:id', auth, async (req, res) => {
 // POST /api/bills — create new bill and deduct stock
 router.post('/', auth, async (req, res) => {
   try {
+    // ── Generate a guaranteed-unique invoice number server-side ──────────────
+    const year = new Date().getFullYear();
+    const prefix = `INV-${year}-`;
+
+    // Find the highest existing sequence number this year across ALL stores
+    const lastBill = await Bill.findOne(
+      { invoiceNumber: { $regex: `^INV-${year}-` } },
+      { invoiceNumber: 1 },
+      { sort: { invoiceNumber: -1 } }
+    );
+
+    let nextSeq = 1;
+    if (lastBill) {
+      const seq = parseInt(lastBill.invoiceNumber.slice(prefix.length), 10);
+      if (!isNaN(seq)) nextSeq = seq + 1;
+    }
+
+    const invoiceNumber = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+    // ────────────────────────────────────────────────────────────────────────
+
     const bill = new Bill({
       ...req.body,
+      invoiceNumber,          // always use server-generated number
       staffId: req.user.id,
       staffName: req.user.name,
     });
@@ -55,7 +76,7 @@ router.post('/', auth, async (req, res) => {
     res.status(201).json(bill);
   } catch (err) {
     if (err.code === 11000) {
-      return res.status(400).json({ message: 'Invoice number already exists.' });
+      return res.status(400).json({ message: 'Invoice number conflict — please try again.' });
     }
     res.status(500).json({ message: 'Failed to create bill.', error: err.message });
   }

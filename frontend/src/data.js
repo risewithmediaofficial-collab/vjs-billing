@@ -138,8 +138,10 @@ export const SHOP_INFO = {
 
 export const GST_RATE = 0.03; // 3%
 
-export function calculateBillAmounts(product, quantity = 1) {
-  const goldValue = product.weight * product.goldRate * quantity;
+export function calculateBillAmounts(product, quantity = 1, liveRate = null) {
+  // Use the live rate (from Settings) when provided; fall back to the rate stored on the product.
+  const rate = liveRate !== null ? liveRate : product.goldRate;
+  const goldValue = product.weight * rate * quantity;
   const makingCharge = product.makingCharge * quantity;
   const stoneCharge = product.stoneCharge * quantity;
   const subtotal = goldValue + makingCharge + stoneCharge;
@@ -158,8 +160,19 @@ export function calculateBillAmounts(product, quantity = 1) {
 
 export function generateInvoiceNumber(existingBills) {
   const year = new Date().getFullYear();
-  const count = existingBills.length + 1;
-  return `INV-${year}-${String(count).padStart(4, '0')}`;
+  const prefix = `INV-${year}-`;
+
+  // Find the highest sequence number already used this year (across ALL stores)
+  let maxSeq = 0;
+  (existingBills || []).forEach(b => {
+    const inv = b.invoiceNumber || '';
+    if (inv.startsWith(prefix)) {
+      const seq = parseInt(inv.slice(prefix.length), 10);
+      if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+    }
+  });
+
+  return `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
 }
 
 export function generateLoanNumber(existingLoans) {

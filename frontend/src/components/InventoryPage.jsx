@@ -7,19 +7,20 @@ import {
 import { formatCurrency, calculateBillAmounts, STORES } from '../data.js';
 
 const CATEGORIES = ['Rings', 'Necklaces', 'Earrings', 'Bracelets', 'Bangles', 'Chains', 'Pendants', 'Anklets', 'Other'];
-const PURITIES = ['24K', '22K', '18K', '14K', 'Platinum', 'Silver'];
 
 const emptyProduct = {
   id: '', barcode: '', name: '', category: 'Rings', weight: '',
-  purity: '22K', makingCharge: '', stoneCharge: '', goldRate: 7500, stock: '', image: null
+  purity: '22K', makingCharge: '', stoneCharge: '', goldRate: 7500, stock: '', image: null,
+  metalType: 'gold',
 };
 
-export default function InventoryPage({ products, onCreateProduct, onUpdateProduct, onDeleteProduct, currentStore, currentStaff }) {
+export default function InventoryPage({ products, onCreateProduct, onUpdateProduct, onDeleteProduct, currentStore, currentStaff, goldRate = 7500, silverRate = 85 }) {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [form, setForm] = useState(emptyProduct);
   const [success, setSuccess] = useState('');
+  const [formError, setFormError] = useState('');  // inline error — no alert()
   const [imagePreview, setImagePreview] = useState(null);
 
   const [expandedProductId, setExpandedProductId] = useState(null);
@@ -39,16 +40,29 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
 
   const openAdd = () => {
     const nextNum = String(products.length + 1).padStart(3, '0');
-    setForm({ ...emptyProduct, id: `PRD-${nextNum}`, barcode: `89012345${nextNum}`, storeId: currentStore });
+    setForm({ ...emptyProduct, id: `PRD-${nextNum}`, barcode: `89012345${nextNum}`, storeId: currentStore, goldRate, metalType: 'gold' });
     setImagePreview(null);
     setEditProduct(null);
+    setFormError('');
     setShowForm(true);
   };
 
+  // When metal type changes: reset purity and auto-fill live rate
+  const handleMetalTypeChange = (metal) => {
+    if (metal === 'silver') {
+      setForm(p => ({ ...p, metalType: 'silver', purity: 'Silver', goldRate: silverRate }));
+    } else {
+      setForm(p => ({ ...p, metalType: 'gold', purity: '22K', goldRate: goldRate }));
+    }
+  };
+
   const openEdit = (product) => {
-    setForm({ ...product });
+    // Detect metal type from existing product purity
+    const metal = (product.purity || '').toLowerCase() === 'silver' ? 'silver' : 'gold';
+    setForm({ ...product, metalType: metal });
     setImagePreview(product.image || null);
-    setEditProduct(product._id || product.id);  // use MongoDB _id
+    setEditProduct(product._id || product.id);
+    setFormError('');
     setShowForm(true);
   };
 
@@ -65,15 +79,16 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.weight || !form.stock) {
-      alert('Please fill all required fields (Name, Weight, Stock)');
+      setFormError('Please fill all required fields: Product Name, Weight, and Stock.');
       return;
     }
+    setFormError('');
     const productData = {
       ...form,
       weight: parseFloat(form.weight),
       makingCharge: parseFloat(form.makingCharge) || 0,
       stoneCharge: parseFloat(form.stoneCharge) || 0,
-      goldRate: parseFloat(form.goldRate) || 7500,
+      goldRate: parseFloat(form.goldRate) || goldRate,
       stock: parseInt(form.stock),
       storeId: form.storeId || currentStore,
     };
@@ -89,18 +104,19 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
       setImagePreview(null);
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      alert('Failed to save product: ' + err.message);
+      setFormError('Failed to save product: ' + err.message);
     }
   };
 
   const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this product?')) {
+    if (window.confirm('Are you sure you want to delete this product?')) {
       try {
         await onDeleteProduct(id);
         setSuccess('Product deleted');
         setTimeout(() => setSuccess(''), 2000);
       } catch (err) {
-        alert('Failed to delete: ' + err.message);
+        setSuccess('');
+        setFormError('Failed to delete: ' + err.message);
       }
     }
   };
@@ -256,10 +272,19 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
           <div className="w-full max-w-xl bg-white border border-gray-200 rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-fade-in text-gray-800">
             <div className="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
               <h2 className="text-gray-800 font-bold text-xl">{editProduct ? 'Edit Product' : 'Add Product'}</h2>
-              <button onClick={() => { setShowForm(false); setImagePreview(null); }} className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors">
+              <button onClick={() => { setShowForm(false); setImagePreview(null); setFormError(''); }} className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors">
                 <X size={18} />
               </button>
             </div>
+
+            {/* Inline error banner */}
+            {formError && (
+              <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
+                <svg className="shrink-0 mt-0.5 text-red-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <p className="text-red-600 text-sm flex-1">{formError}</p>
+                <button onClick={() => setFormError('')} className="text-red-400 hover:text-red-600"><X size={14} /></button>
+              </div>
+            )}
 
             {/* Product Image Upload */}
             <div className="mb-5 bg-gray-50 border border-gray-200 rounded-xl p-4">
@@ -318,20 +343,63 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
+
+              {/* Metal Type — Gold or Silver? */}
               <div>
-                <label className="text-xs text-gray-500 font-semibold mb-1.5 block uppercase tracking-wider">Purity</label>
-                <select value={form.purity} onChange={e => setForm(p => ({ ...p, purity: e.target.value }))}
-                  className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-gray-800 text-sm focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100">
-                  {PURITIES.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <label className="text-xs text-gray-500 font-semibold mb-2 block">Is this Gold or Silver? *</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio" name="metalType" value="gold"
+                      checked={form.metalType === 'gold'}
+                      onChange={() => handleMetalTypeChange('gold')}
+                      className="accent-amber-500"
+                    />
+                    <span className="text-gray-700 text-sm font-medium">Gold</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio" name="metalType" value="silver"
+                      checked={form.metalType === 'silver'}
+                      onChange={() => handleMetalTypeChange('silver')}
+                      className="accent-blue-500"
+                    />
+                    <span className="text-gray-700 text-sm font-medium">Silver</span>
+                  </label>
+                </div>
               </div>
 
+              {/* Purity — filtered by metal type */}
+              <div>
+                <label className="text-xs text-gray-500 font-semibold mb-1.5 block uppercase tracking-wider">Purity</label>
+                {form.metalType === 'silver' ? (
+                  <input type="text" value="Silver" readOnly
+                    className="w-full border border-gray-200 bg-gray-100 rounded-xl px-4 py-2.5 text-gray-500 text-sm cursor-not-allowed" />
+                ) : (
+                  <select value={form.purity} onChange={e => setForm(p => ({ ...p, purity: e.target.value }))}
+                    className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-gray-800 text-sm focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100">
+                    {['24K', '22K', '18K', '14K', 'Platinum'].map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                )}
+              </div>
+
+              {/* Rate — read-only from Settings */}
+              <div className="col-span-2">
+                <label className="text-xs text-gray-500 font-semibold mb-1.5 block uppercase tracking-wider">
+                  {form.metalType === 'silver' ? 'Silver Rate' : 'Gold Rate'} (from Settings, not editable here)
+                </label>
+                <input type="text"
+                  value={`₹${Number(form.goldRate).toLocaleString('en-IN')} per gram`}
+                  readOnly
+                  className="w-full border border-gray-200 bg-gray-100 rounded-xl px-4 py-2.5 text-gray-500 text-sm cursor-not-allowed" />
+              </div>
+
+              {/* Weight, Stock, Making, Stone */}
               {[
-                { key: 'weight', label: 'Weight (grams) *', placeholder: '5.5' },
-                { key: 'goldRate', label: 'Gold Rate (₹/g)', placeholder: '7500' },
+                { key: 'weight',       label: 'Weight (grams) *',  placeholder: '5.5' },
+                { key: 'stock',        label: 'Stock Quantity *',   placeholder: '10' },
                 { key: 'makingCharge', label: 'Making Charge (₹)', placeholder: '2500' },
-                { key: 'stoneCharge', label: 'Stone Charge (₹)', placeholder: '0' },
-                { key: 'stock', label: 'Stock Quantity *', placeholder: '10' },
+                { key: 'stoneCharge',  label: 'Stone Charge (₹)',  placeholder: '0' },
               ].map(field => (
                 <div key={field.key}>
                   <label className="text-xs text-gray-500 font-semibold mb-1.5 block uppercase tracking-wider">{field.label}</label>
@@ -346,8 +414,6 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
                   />
                 </div>
               ))}
-
-              {/* Store assignment — admin/manager only */}
               {isAdminOrManager && (
                 <div className="col-span-2">
                   <label className="text-xs text-gray-500 font-semibold mb-1.5 block uppercase tracking-wider">Store Assignment</label>

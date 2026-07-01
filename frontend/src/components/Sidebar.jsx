@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Wallet,
+  Sparkles,
 } from 'lucide-react';
 
 const navItems = [
@@ -19,6 +20,7 @@ const navItems = [
   { id: 'billing', label: 'New Bill', icon: ShoppingCart },
   { id: 'invoices', label: 'Invoices', icon: FileText },
   { id: 'loans', label: 'Gold Loans', icon: Wallet },
+  { id: 'schemes', label: 'Schemes', icon: Sparkles },
   { id: 'inventory', label: 'Inventory', icon: Package },
   { id: 'staff', label: 'Staff', icon: Users, adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },

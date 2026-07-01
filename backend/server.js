@@ -18,6 +18,7 @@ app.use('/api/bills',    require('./routes/bills'));
 app.use('/api/loans',    require('./routes/loans'));
 app.use('/api/staff',    require('./routes/staff'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/schemes',  require('./routes/schemes'));
 
 // ─── Health check ─────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.json({ message: 'VJS Billing Backend is running ✅' }));
