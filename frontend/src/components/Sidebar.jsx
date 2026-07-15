@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { id: 'dashboard', label: 'Welcome', icon: LayoutDashboard },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'billing', label: 'New Bill', icon: ShoppingCart },
   { id: 'invoices', label: 'Invoices', icon: FileText },
   { id: 'loans', label: 'Gold Loans', icon: Wallet },
