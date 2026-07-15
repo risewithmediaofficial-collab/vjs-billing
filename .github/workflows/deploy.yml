@@ -1,0 +1,78 @@
+name: 🚀 Auto Deploy to Hostinger VPS
+
+on:
+  push:
+    branches:
+      - main  # triggers on every push to main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Pull code ─────────────────────────────────────────────────────
+      - name: ✅ Checkout Code
+        uses: actions/checkout@v4
+
+      # ── 2. Log in to Docker Hub ───────────────────────────────────────────
+      - name: 🐳 Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # ── 3. Build & push BACKEND image ────────────────────────────────────
+      - name: 🔨 Build & Push Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/billing-backend:latest
+            ${{ secrets.DOCKER_USERNAME }}/billing-backend:${{ github.sha }}
+
+      # ── 4. Build & push FRONTEND image ───────────────────────────────────
+      - name: 🔨 Build & Push Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          build-args: |
+            VITE_API_URL=/api
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/billing-frontend:latest
+            ${{ secrets.DOCKER_USERNAME }}/billing-frontend:${{ github.sha }}
+
+      # ── 5. Copy production compose file to VPS ───────────────────────────
+      - name: 📁 Copy docker-compose.prod.yml to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "/opt/billing-vjs/"
+
+      # ── 6. SSH → pull latest images → restart containers ─────────────────
+      - name: 🚀 Deploy on VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            mkdir -p /opt/billing-vjs
+            cd /opt/billing-vjs
+
+            # Pull latest images from Docker Hub
+            docker compose -f docker-compose.prod.yml pull
+
+            # Restart only changed containers, keep MongoDB running
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # Clean up dangling images to save disk space
+            docker image prune -f
+
+            echo "✅ Deployment complete!"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
