@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './index.css';
 import { STORES } from './data.js';
+import { ToastProvider, useToast } from './ToastContext.jsx';
 import {
   authApi, productsApi, billsApi, loansApi, staffApi, settingsApi, schemesApi, activityLogsApi,
   getToken, getCurrentUser, setCurrentUser, clearToken,
@@ -17,7 +18,10 @@ import BillPreview from './components/BillPreview.jsx';
 import LoansPage from './components/LoansPage.jsx';
 import SchemesPage from './components/SchemesPage.jsx';
 
-export default function App() {
+// ── Inner app wrapped by ToastProvider ────────────────────────────────────────
+function AppInner() {
+  const toast = useToast();
+
   const [currentStaff, setCurrentStaff] = useState(() => getCurrentUser());
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -63,7 +67,9 @@ export default function App() {
       setSilverRateState(settings?.silverRate || 85);
       setActivityLogs(logs || []);
     } catch (err) {
-      setDbError('⚠️ Cannot connect to backend. Make sure the server is running on port 5000.');
+      const msg = err.message || 'Unable to connect to server.';
+      setDbError('⚠️ ' + msg);
+      toast.error(msg, 'Connection Error');
       console.error('Data load error:', err);
     } finally {
       setLoading(false);
@@ -94,6 +100,7 @@ export default function App() {
     setCurrentStaff(staffMember);
     setCurrentUser(staffMember);
     if (staffMember.storeId) setCurrentStore(staffMember.storeId);
+    toast.success(`Welcome back, ${staffMember.name}!`);
   };
 
   const handleLogout = () => {
@@ -106,6 +113,8 @@ export default function App() {
     setLoans([]);
     setSchemes([]);
     setActivityLogs([]);
+    // Toast won't show after logout since LoginScreen replaces the app —
+    // but we keep the call for completeness (it's harmless)
   };
 
   // ── Bill creation ──────────────────────────────────────────────────────────
@@ -118,8 +127,9 @@ export default function App() {
       setProducts(updatedProducts || []);
       setPreviewBill(bill);
       setActiveTab('invoices');
+      toast.success('Bill generated successfully!');
     } catch (err) {
-      // Re-throw so BillingPage's catch block shows an inline error banner
+      toast.error(err.message || 'Failed to generate bill. Please try again.', 'Billing Error');
       throw err;
     }
   };
@@ -129,8 +139,9 @@ export default function App() {
     try {
       const newLoan = await loansApi.create({ ...loan, storeId: currentStore });
       setLoans(prev => [newLoan, ...prev]);
+      toast.success('Gold loan created successfully!');
     } catch (err) {
-      alert('Failed to save loan: ' + err.message);
+      toast.error(err.message || 'Failed to save loan.', 'Loan Error');
     }
   };
 
@@ -138,49 +149,108 @@ export default function App() {
     try {
       const saved = await loansApi.update(updatedLoan._id || updatedLoan.id, updatedLoan);
       setLoans(prev => prev.map(l => (l._id === saved._id ? saved : l)));
+      if (updatedLoan.status === 'Closed') {
+        toast.success('Loan settled and closed successfully!');
+      } else if (updatedLoan.status === 'SettlePending') {
+        toast.info('Settlement request submitted for Admin approval.');
+      } else {
+        toast.success('Loan updated successfully!');
+      }
     } catch (err) {
-      alert('Failed to update loan: ' + err.message);
+      toast.error(err.message || 'Failed to update loan.', 'Loan Error');
     }
   };
 
   // ── Schemes handlers ────────────────────────────────────────────────────────
   const handleEnrollScheme = async (data) => {
-    const newScheme = await schemesApi.create({ ...data, storeId: currentStore });
-    setSchemes(prev => [newScheme, ...prev]);
+    try {
+      const newScheme = await schemesApi.create({ ...data, storeId: currentStore });
+      setSchemes(prev => [newScheme, ...prev]);
+      toast.success('Scheme enrollment successful!');
+    } catch (err) {
+      toast.error(err.message || 'Failed to enroll scheme.', 'Scheme Error');
+      throw err;
+    }
   };
 
   const handlePayScheme = async (id, data) => {
-    const updated = await schemesApi.pay(id, data);
-    setSchemes(prev => prev.map(s => (s._id === id ? updated : s)));
+    try {
+      const updated = await schemesApi.pay(id, data);
+      setSchemes(prev => prev.map(s => (s._id === id ? updated : s)));
+      toast.success('Installment payment recorded successfully!');
+    } catch (err) {
+      toast.error(err.message || 'Failed to record installment.', 'Payment Error');
+      throw err;
+    }
   };
 
   const handleRedeemScheme = async (id, payload = {}) => {
-    const updated = await schemesApi.redeem(id, payload);
-    setSchemes(prev => prev.map(s => (s._id === id ? updated : s)));
+    try {
+      const updated = await schemesApi.redeem(id, payload);
+      setSchemes(prev => prev.map(s => (s._id === id ? updated : s)));
+      if (payload?.status === 'active') {
+        toast.warning('Redemption request rejected — scheme restored to active.');
+      } else if (payload?.status === 'completed') {
+        toast.success('Scheme redemption approved successfully!');
+      } else {
+        toast.success('Scheme redeemed successfully!');
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to redeem scheme.', 'Scheme Error');
+      throw err;
+    }
   };
 
   const handleCancelScheme = async (id, payload = {}) => {
-    const updated = await schemesApi.cancel(id, payload);
-    setSchemes(prev => prev.map(s => (s._id === id ? updated : s)));
+    try {
+      const updated = await schemesApi.cancel(id, payload);
+      setSchemes(prev => prev.map(s => (s._id === id ? updated : s)));
+      if (payload?.status === 'active') {
+        toast.warning('Cancellation request rejected — scheme restored to active.');
+      } else {
+        toast.success('Scheme cancelled successfully.');
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to cancel scheme.', 'Scheme Error');
+      throw err;
+    }
   };
 
-  // ── Product CRUD handlers (all call MongoDB API) ──────────────────────────────
+  // ── Product CRUD handlers ──────────────────────────────────────────────────
   const handleCreateProduct = async (data) => {
-    const saved = await productsApi.create(data);
-    const fresh = await productsApi.getAll(currentStore);
-    setProducts(fresh || []);
-    return saved;
+    try {
+      const saved = await productsApi.create(data);
+      const fresh = await productsApi.getAll(currentStore);
+      setProducts(fresh || []);
+      toast.success('Product added to inventory successfully!');
+      return saved;
+    } catch (err) {
+      toast.error(err.message || 'Failed to add product.', 'Inventory Error');
+      throw err;
+    }
   };
 
   const handleUpdateProduct = async (id, data) => {
-    await productsApi.update(id, data);
-    const fresh = await productsApi.getAll(currentStore);
-    setProducts(fresh || []);
+    try {
+      await productsApi.update(id, data);
+      const fresh = await productsApi.getAll(currentStore);
+      setProducts(fresh || []);
+      toast.success('Product updated successfully!');
+    } catch (err) {
+      toast.error(err.message || 'Failed to update product.', 'Inventory Error');
+      throw err;
+    }
   };
 
   const handleDeleteProduct = async (id) => {
-    await productsApi.delete(id);
-    setProducts(prev => prev.filter(p => (p._id || p.id) !== id));
+    try {
+      await productsApi.delete(id);
+      setProducts(prev => prev.filter(p => (p._id || p.id) !== id));
+      toast.success('Product removed from inventory.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete product.', 'Inventory Error');
+      throw err;
+    }
   };
 
   // ── Gold rate update ───────────────────────────────────────────────────────
@@ -188,8 +258,9 @@ export default function App() {
     setGoldRateState(rate);
     try {
       await settingsApi.update(currentStore, { goldRate: rate });
+      toast.success('Gold rate updated successfully!');
     } catch (err) {
-      console.error('Failed to save gold rate:', err);
+      toast.error(err.message || 'Failed to save gold rate.', 'Settings Error');
     }
   };
 
@@ -198,8 +269,9 @@ export default function App() {
     setSilverRateState(rate);
     try {
       await settingsApi.update(currentStore, { silverRate: rate });
+      toast.success('Silver rate updated successfully!');
     } catch (err) {
-      console.error('Failed to save silver rate:', err);
+      toast.error(err.message || 'Failed to save silver rate.', 'Settings Error');
     }
   };
 
@@ -209,8 +281,9 @@ export default function App() {
       await staffApi.create(data);
       const fresh = await staffApi.getAll();
       setStaff(fresh || []);
+      toast.success(`${data.name} added to the team successfully!`);
     } catch (err) {
-      alert('Failed to create staff: ' + err.message);
+      toast.error(err.message || 'Failed to create staff member.', 'Staff Error');
       throw err;
     }
   };
@@ -219,8 +292,9 @@ export default function App() {
     try {
       await staffApi.delete(id);
       setStaff(prev => prev.filter(s => (s._id || s.id) !== id));
+      toast.success('Staff member removed successfully.');
     } catch (err) {
-      alert('Failed to delete staff: ' + err.message);
+      toast.error(err.message || 'Failed to delete staff member.', 'Staff Error');
     }
   };
 
@@ -228,8 +302,9 @@ export default function App() {
     try {
       const updated = await staffApi.update(id, data);
       setStaff(prev => prev.map(s => (s._id === id || s.id === id ? updated : s)));
+      toast.success('Staff member updated successfully!');
     } catch (err) {
-      alert('Failed to update staff: ' + err.message);
+      toast.error(err.message || 'Failed to update staff member.', 'Staff Error');
       throw err;
     }
   };
@@ -427,5 +502,14 @@ export default function App() {
         <BillPreview bill={previewBill} onClose={() => setPreviewBill(null)} />
       )}
     </div>
+  );
+}
+
+// ── Root export — wraps everything in ToastProvider ───────────────────────────
+export default function App() {
+  return (
+    <ToastProvider>
+      <AppInner />
+    </ToastProvider>
   );
 }

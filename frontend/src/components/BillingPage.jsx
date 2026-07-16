@@ -3,7 +3,7 @@ import {
   Search, Barcode, Plus, Minus, Trash2,
   User, Phone, Tag, CreditCard, Printer,
   CheckCircle2, ScanLine, ShoppingCart,
-  IndianRupee, Package, X, Save, Image as ImageIcon, ChevronDown
+  IndianRupee, Package, X, Save, Image as ImageIcon, ChevronDown, Loader2
 } from 'lucide-react';
 import { calculateBillAmounts, generateInvoiceNumber, formatCurrency, GST_RATE } from '../data.js';
 
@@ -35,6 +35,7 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
   const [addForm, setAddForm] = useState(emptyNewProduct);
   const [addImagePreview, setAddImagePreview] = useState(null);
   const [addLoading, setAddLoading] = useState(false);
+  const [generateLoading, setGenerateLoading] = useState(false);
   const [showProductList, setShowProductList] = useState(false);
   const searchRef = useRef(null);
   const searchWrapRef = useRef(null);
@@ -289,6 +290,7 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
     };
 
     try {
+      setGenerateLoading(true);
       await onGenerateBill(bill);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 4000);
@@ -298,6 +300,8 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
       setPaymentMethod('Cash');
     } catch (err) {
       setError(err.message || 'Failed to generate bill. Please try again.');
+    } finally {
+      setGenerateLoading(false);
     }
   };
 
@@ -710,14 +714,18 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
           {/* Generate Bill Button */}
           <button
             onClick={handleGenerate}
-            disabled={cartItems.length === 0}
+            disabled={cartItems.length === 0 || generateLoading}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg
               hover:from-amber-400 hover:to-orange-400 transition-all duration-200 shadow-lg shadow-amber-200
               active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed
               flex items-center justify-center gap-2"
           >
-            <Printer size={20} />
-            Generate Bill
+            {generateLoading ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <Printer size={20} />
+            )}
+            {generateLoading ? 'Generating Bill...' : 'Generate Bill'}
           </button>
         </div>
       </div>

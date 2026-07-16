@@ -32,6 +32,28 @@ export function setCurrentUser(user) {
   localStorage.setItem('vjs_current_user', JSON.stringify(user));
 }
 
+// ── Friendly error messages by HTTP status ────────────────────────────────────
+function friendlyError(status, serverMessage) {
+  // Always prefer the server's own message when it's meaningful
+  if (serverMessage && serverMessage.length < 200 && !serverMessage.startsWith('<!')) {
+    return serverMessage;
+  }
+  switch (status) {
+    case 400: return 'Invalid request. Please check your input and try again.';
+    case 401: return 'Session expired. Please log in again.';
+    case 403: return 'Access denied. You do not have permission for this action.';
+    case 404: return 'Record not found. It may have been deleted.';
+    case 409: return 'This record already exists. Please check for duplicates.';
+    case 422: return 'Invalid data submitted. Please check all required fields.';
+    case 429: return 'Too many requests. Please wait a moment and try again.';
+    case 500: return 'Server error. Please try again later.';
+    case 502:
+    case 503:
+    case 504: return 'Server is temporarily unavailable. Please try again shortly.';
+    default:  return `Request failed (${status}). Please try again.`;
+  }
+}
+
 // ── Core fetch helper ────────────────────────────────────────────────────────
 async function request(path, options = {}) {
   const token = getToken();
@@ -41,26 +63,49 @@ async function request(path, options = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let response;
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch (netErr) {
+    console.error('Network error:', netErr);
+    throw new Error('Unable to connect to server. Please check your internet connection and ensure the server is running.');
+  }
 
   // Handle token expiry
-  if (response.status === 401) {
+  if (response.status === 401 && path !== '/auth/login') {
     clearToken();
     window.location.reload();
     return;
   }
 
-  const data = await response.json();
+  let data = {};
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch (parseErr) {
+      console.error('JSON parsing failed:', parseErr);
+    }
+  } else {
+    try {
+      const text = await response.text();
+      data = { message: text || `Error ${response.status}: ${response.statusText}` };
+    } catch (textErr) {
+      data = { message: `Error ${response.status}: ${response.statusText}` };
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(data.message || 'Request failed');
+    const msg = friendlyError(response.status, data.message);
+    throw new Error(msg);
   }
 
   return data;
 }
+
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {

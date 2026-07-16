@@ -8,12 +8,17 @@ export default function SettingsPage({ goldRate, onUpdateGoldRate, silverRate, o
   const [silverRateInput, setSilverRateInput] = useState(silverRate);
   const [gst, setGst] = useState(3);
   const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
   const [rateChanged, setRateChanged] = useState(false);
   const [silverRateChanged, setSilverRateChanged] = useState(false);
 
   const handleSaveRate = () => {
+    setError('');
     const parsed = parseFloat(rate);
-    if (!parsed || parsed <= 0) { alert('Please enter a valid gold rate'); return; }
+    if (!parsed || parsed <= 0) { 
+      setError('Please enter a valid gold rate'); 
+      return; 
+    }
     onUpdateGoldRate(parsed);
     setRateChanged(false);
     setSuccess('Gold rate updated successfully!');
@@ -21,8 +26,12 @@ export default function SettingsPage({ goldRate, onUpdateGoldRate, silverRate, o
   };
 
   const handleSaveSilverRate = () => {
+    setError('');
     const parsed = parseFloat(silverRateInput);
-    if (!parsed || parsed <= 0) { alert('Please enter a valid silver rate'); return; }
+    if (!parsed || parsed <= 0) { 
+      setError('Please enter a valid silver rate'); 
+      return; 
+    }
     onUpdateSilverRate(parsed);
     setSilverRateChanged(false);
     setSuccess('Silver rate updated successfully!');
@@ -30,6 +39,7 @@ export default function SettingsPage({ goldRate, onUpdateGoldRate, silverRate, o
   };
 
   const handleSave = () => {
+    setError('');
     const parsed = parseFloat(rate);
     if (parsed > 0) onUpdateGoldRate(parsed);
     setSuccess('Settings saved successfully!');
@@ -47,6 +57,13 @@ export default function SettingsPage({ goldRate, onUpdateGoldRate, silverRate, o
         <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-4 animate-fade-in">
           <CheckCircle2 size={16} className="text-emerald-500" />
           <p className="text-emerald-700 text-sm font-semibold">{success}</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-4 animate-fade-in text-gray-800">
+          <span className="text-red-500">⚠️</span>
+          <p className="text-red-700 text-sm font-semibold">{error}</p>
         </div>
       )}
 

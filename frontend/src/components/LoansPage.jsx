@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Wallet, Search, Plus, X, IndianRupee, Clock, 
-  CheckCircle2, AlertTriangle, FileText, Printer, Camera, Image as ImageIcon
+  CheckCircle2, AlertTriangle, FileText, Printer, Camera, Image as ImageIcon, Loader2
 } from 'lucide-react';
 import { calculateLoanInterest, generateLoanNumber, formatCurrency, formatDate, SHOP_INFO } from '../data.js';
 
@@ -111,12 +111,14 @@ export default function LoansPage({ loans, onSaveLoan, onUpdateLoan, currentStaf
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyLoan);
   const [success, setSuccess] = useState('');
+  const [formError, setFormError] = useState('');
   const [goldImage, setGoldImage] = useState(null);
   const [goldImagePreview, setGoldImagePreview] = useState(null);
   
   const [settleLoanId, setSettleLoanId] = useState(null);
   const [previewLoan, setPreviewLoan] = useState(null);
   const [previewIsSettlement, setPreviewIsSettlement] = useState(false);
+  const [loanSaveLoading, setLoanSaveLoading] = useState(false);
 
   // Lock body scroll when popup modals are active
   useEffect(() => {
@@ -153,11 +155,13 @@ export default function LoansPage({ loans, onSaveLoan, onUpdateLoan, currentStaf
     reader.readAsDataURL(file);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!form.customerName || !form.customerMobile || !form.pledgeItem || !form.weight || !form.loanAmount) {
-      alert('Please fill all required fields');
+      setFormError('Please fill all required fields: Customer Name, Mobile, Item, Weight, and Loan Amount.');
       return;
     }
+    setFormError('');
+    setLoanSaveLoading(true);
     const newLoan = {
       storeId: currentStore,
       loanNumber: generateLoanNumber(loans),
@@ -175,15 +179,21 @@ export default function LoansPage({ loans, onSaveLoan, onUpdateLoan, currentStaf
       staffName: currentStaff.name,
       goldImage: goldImage || null,
     };
-    onSaveLoan(newLoan);
-    setShowForm(false);
-    setForm(emptyLoan);
-    setGoldImage(null);
-    setGoldImagePreview(null);
-    setSuccess('Loan issued successfully!');
-    setTimeout(() => setSuccess(''), 3000);
-    setPreviewLoan(newLoan);
-    setPreviewIsSettlement(false);
+    try {
+      await onSaveLoan(newLoan);
+      setShowForm(false);
+      setForm(emptyLoan);
+      setGoldImage(null);
+      setGoldImagePreview(null);
+      setSuccess('Loan issued successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+      setPreviewLoan(newLoan);
+      setPreviewIsSettlement(false);
+    } catch (err) {
+      setFormError('Failed to issue loan: ' + (err.message || 'Unknown error'));
+    } finally {
+      setLoanSaveLoading(false);
+    }
   };
 
   const handleSettle = () => {
@@ -212,7 +222,6 @@ export default function LoansPage({ loans, onSaveLoan, onUpdateLoan, currentStaf
   };
 
   const handleAdminApproveSettle = (loan) => {
-    if (!window.confirm(`Approve settlement & close loan ${loan.loanNumber}?`)) return;
     const updatedLoan = {
       ...loan,
       status: 'Closed'
@@ -223,7 +232,6 @@ export default function LoansPage({ loans, onSaveLoan, onUpdateLoan, currentStaf
   };
 
   const handleAdminRejectSettle = (loan) => {
-    if (!window.confirm(`Reject settlement & restore loan ${loan.loanNumber} as active?`)) return;
     const updatedLoan = {
       ...loan,
       status: 'Active',
@@ -512,9 +520,18 @@ export default function LoansPage({ loans, onSaveLoan, onUpdateLoan, currentStaf
               </div>
             </div>
 
+            {formError && (
+              <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mt-4 text-xs font-medium animate-fade-in">
+                <span>⚠️</span> {formError}
+              </div>
+            )}
+
             <div className="flex gap-3 mt-6 border-t border-gray-100 pt-4">
-              <button onClick={() => { setShowForm(false); setGoldImage(null); setGoldImagePreview(null); }} className="flex-1 py-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-650 font-semibold hover:bg-gray-200 transition-all">Cancel</button>
-              <button onClick={handleCreate} className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-400 transition-all shadow-sm">Issue Loan</button>
+              <button onClick={() => { setShowForm(false); setGoldImage(null); setGoldImagePreview(null); setFormError(''); }} disabled={loanSaveLoading} className="flex-1 py-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-650 font-semibold hover:bg-gray-200 transition-all disabled:opacity-50">Cancel</button>
+              <button onClick={handleCreate} disabled={loanSaveLoading} className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-400 transition-all shadow-sm disabled:opacity-60 flex items-center justify-center gap-2">
+                {loanSaveLoading ? <Loader2 size={16} className="animate-spin" /> : null}
+                {loanSaveLoading ? 'Issuing Loan...' : 'Issue Loan'}
+              </button>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Trash2, X, Save, CheckCircle2, ShieldCheck, Lock, KeyRound } from 'lucide-react';
+import { Users, Plus, Trash2, X, Save, CheckCircle2, ShieldCheck, Lock, KeyRound, Loader2 } from 'lucide-react';
 import { STORES, formatCurrency } from '../data.js';
 import { staffApi } from '../api.js';
 
@@ -13,6 +13,12 @@ export default function StaffPage({ staff, onCreateStaff, onDeleteStaff, onUpdat
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState('');
 
+  // Delete confirmation modal state
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // { id, name }
+  const [deletePin, setDeletePin]         = useState('');
+  const [deleteError, setDeleteError]     = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Security Verification Modal States
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [securityStaff, setSecurityStaff] = useState(null);
@@ -25,7 +31,7 @@ export default function StaffPage({ staff, onCreateStaff, onDeleteStaff, onUpdat
 
   // Lock body scroll when popup modals are active
   useEffect(() => {
-    if (showForm || showSecurityModal) {
+    if (showForm || showSecurityModal || deleteConfirm) {
       document.body.classList.add('overflow-hidden');
     } else {
       document.body.classList.remove('overflow-hidden');
@@ -33,7 +39,7 @@ export default function StaffPage({ staff, onCreateStaff, onDeleteStaff, onUpdat
     return () => {
       document.body.classList.remove('overflow-hidden');
     };
-  }, [showForm, showSecurityModal]);
+  }, [showForm, showSecurityModal, deleteConfirm]);
 
   const handleRevealPinSubmit = async () => {
     setSecurityError('');
@@ -117,23 +123,30 @@ export default function StaffPage({ staff, onCreateStaff, onDeleteStaff, onUpdat
     }
   };
 
-  const handleDelete = async (id, name) => {
-    const adminPin = window.prompt(`To delete staff member "${name}", please enter your Admin PIN to authorize:`);
-    if (adminPin === null) return; // user cancelled prompt
+  const handleDelete = (id, name) => {
+    setDeleteConfirm({ id, name });
+    setDeletePin('');
+    setDeleteError('');
+  };
 
-    if (!adminPin.trim()) {
-      alert('Verification PIN is required to delete staff.');
+  const confirmDelete = async () => {
+    if (!deletePin.trim()) {
+      setDeleteError('Please enter your Admin PIN to authorize deletion.');
       return;
     }
-
+    setDeleteLoading(true);
+    setDeleteError('');
     try {
-      // Verify Admin PIN by making a call to revealPin for this staff member
-      await staffApi.revealPin(id, adminPin.trim());
-      
-      // If verification succeeds, execute delete
-      await onDeleteStaff(id);
+      await staffApi.revealPin(deleteConfirm.id, deletePin.trim());
+      await onDeleteStaff(deleteConfirm.id);
+      setDeleteConfirm(null);
+      setDeletePin('');
+      setSuccess(`${deleteConfirm.name} deleted successfully.`);
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      alert('Verification failed: Incorrect Admin password. Deletion cancelled.');
+      setDeleteError('Incorrect Admin PIN — deletion cancelled.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -371,7 +384,7 @@ export default function StaffPage({ staff, onCreateStaff, onDeleteStaff, onUpdat
                 disabled={saving}
                 className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-60"
               >
-                <Save size={16} />
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 {saving ? 'Saving...' : 'Add Staff'}
               </button>
             </div>
@@ -522,6 +535,60 @@ export default function StaffPage({ staff, onCreateStaff, onDeleteStaff, onUpdat
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Delete Confirmation Modal ─── */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 w-full max-w-sm animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-11 h-11 rounded-xl bg-red-100 flex items-center justify-center">
+                <Trash2 size={20} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-800 text-base">Confirm Deletion</h3>
+                <p className="text-gray-500 text-xs mt-0.5">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">
+              You are about to delete <span className="font-bold text-gray-800">"{deleteConfirm.name}"</span>. Enter your Admin PIN to authorize:
+            </p>
+
+            <input
+              type="password"
+              value={deletePin}
+              onChange={e => { setDeletePin(e.target.value); setDeleteError(''); }}
+              onKeyDown={e => e.key === 'Enter' && confirmDelete()}
+              placeholder="Enter your Admin PIN"
+              autoFocus
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all bg-gray-50 mb-3"
+            />
+
+            {deleteError && (
+              <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-3 text-xs font-medium">
+                <span>⚠️</span> {deleteError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setDeleteConfirm(null); setDeletePin(''); setDeleteError(''); }}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteLoading}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm transition-colors shadow-sm disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {deleteLoading ? <Loader2 size={16} className="animate-spin" /> : null}
+                {deleteLoading ? 'Verifying...' : 'Delete Staff'}
+              </button>
             </div>
           </div>
         </div>

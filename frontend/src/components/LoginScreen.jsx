@@ -10,8 +10,12 @@ export default function LoginScreen({ onLogin }) {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      setError('Please enter your username and password');
+    if (!username.trim()) {
+      setError('Please enter your username.');
+      return;
+    }
+    if (!password.trim()) {
+      setError('Please enter your password.');
       return;
     }
     setLoading(true);
@@ -21,7 +25,21 @@ export default function LoginScreen({ onLogin }) {
       setToken(result.token);
       onLogin(result.user);
     } catch (err) {
-      setError(err.message || 'Invalid username or password. Please try again.');
+      const msg = err.message || '';
+      // Classify the error for the user
+      if (msg.includes('Unable to connect') || msg.includes('NetworkError') || msg.includes('fetch')) {
+        setError('Unable to connect to server. Please check your internet connection.');
+      } else if (msg.includes('Server error') || msg.includes('500')) {
+        setError('Server error. Please try again in a moment.');
+      } else if (msg.includes('not found') || msg.includes('404') || msg.includes('No user')) {
+        setError('No account found with this username. Please check and try again.');
+      } else if (msg.includes('inactive') || msg.includes('disabled')) {
+        setError('Your account is inactive. Please contact your administrator.');
+      } else if (msg.includes('password') || msg.includes('incorrect') || msg.includes('Invalid') || msg.includes('401') || msg.includes('wrong')) {
+        setError('Incorrect password or username Please try again.');
+      } else {
+        setError(msg || 'Username or password is incorrect. Please try again.');
+      }
       setPassword('');
     } finally {
       setLoading(false);

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Package, Plus, Edit3, Trash2, Search, X, Save,
-  AlertTriangle, CheckCircle2, Barcode, Lock, Image as ImageIcon,
+  AlertTriangle, CheckCircle2, Barcode, Lock, Image as ImageIcon, Loader2,
 } from 'lucide-react';
 import { formatCurrency, calculateBillAmounts, STORES } from '../data.js';
 
@@ -26,8 +26,11 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
   const [success, setSuccess]         = useState('');
   const [formError, setFormError]     = useState('');
   const [imagePreview, setImagePreview] = useState(null);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // product id pending delete
 
   const isAdminOrManager = currentStaff?.role === 'Admin' || currentStaff?.role === 'Manager';
+
 
   const filtered = products.filter(p => {
     const q = search.toLowerCase();
@@ -79,6 +82,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
       return;
     }
     setFormError('');
+    setSaveLoading(true);
     const productData = {
       ...form,
       weight:       parseFloat(form.weight),
@@ -101,20 +105,28 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setFormError('Failed to save product: ' + err.message);
+    } finally {
+      setSaveLoading(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await onDeleteProduct(id);
-        setSuccess('Product deleted');
-        setTimeout(() => setSuccess(''), 2000);
-      } catch (err) {
-        setFormError('Failed to delete: ' + err.message);
-      }
+  const handleDelete = (id) => {
+    setDeleteConfirm(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    try {
+      await onDeleteProduct(deleteConfirm);
+      setSuccess('Product removed from inventory.');
+      setTimeout(() => setSuccess(''), 2500);
+    } catch (err) {
+      setFormError('Failed to delete product: ' + err.message);
+    } finally {
+      setDeleteConfirm(null);
     }
   };
+
 
   const stockBadge = (stock) => {
     if (stock === 0)  return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Out of Stock</span>;
@@ -137,21 +149,84 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
               <span className="text-gray-500 text-xs">View only</span>
             </div>
           )}
-          <button
-            onClick={openAdd}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg"
-          >
-            <Plus size={16} />
-            Add Product
-          </button>
+          {isAdminOrManager && (
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg"
+            >
+              <Plus size={16} />
+              Add Product
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Low stock warning banner */}
+      {products.filter(p => p.stock > 0 && p.stock <= 3).length > 0 && (() => {
+        const lowList = products.filter(p => p.stock > 0 && p.stock <= 3);
+        return (
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 animate-fade-in">
+            <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-amber-800 font-semibold text-sm">⚠️ Low Stock Alert</p>
+              <p className="text-amber-700 text-xs mt-0.5">
+                {lowList.length} item{lowList.length !== 1 ? 's are' : ' is'} running low:{' '}
+                <span className="font-medium">{lowList.map(p => `${p.name} (${p.stock})`).join(', ')}</span>
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Success banner */}
       {success && (
         <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-4 animate-fade-in">
           <CheckCircle2 size={16} className="text-emerald-500" />
           <p className="text-emerald-700 text-sm font-semibold">{success}</p>
+        </div>
+      )}
+
+      {/* Form error banner */}
+      {formError && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-4 animate-fade-in">
+          <AlertTriangle size={16} className="text-red-500" />
+          <p className="text-red-700 text-sm flex-1">{formError}</p>
+          <button onClick={() => setFormError('')} className="text-red-400 hover:text-red-600 ml-2"><X size={14} /></button>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-gray-100 mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 size={18} className="text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-800">Delete Product</h3>
+                <p className="text-gray-500 text-xs">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-gray-600 text-sm mb-5">
+              Are you sure you want to remove this product from inventory? All associated stock data will be permanently deleted.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 font-semibold hover:bg-gray-200 transition-all text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-all text-sm flex items-center justify-center gap-2"
+              >
+                <Trash2 size={14} />
+                Delete Product
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -622,12 +697,12 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
             </div>
 
             <div className="flex gap-3 mt-6 border-t border-gray-100 pt-4">
-              <button onClick={() => { setShowForm(false); setImagePreview(null); }} className="flex-1 py-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 font-semibold hover:bg-gray-200 transition-all">
+              <button onClick={() => { setShowForm(false); setImagePreview(null); }} disabled={saveLoading} className="flex-1 py-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 font-semibold hover:bg-gray-200 transition-all disabled:opacity-50">
                 Cancel
               </button>
-              <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-sm">
-                <Save size={16} />
-                {editProduct ? 'Update' : 'Add Product'}
+              <button onClick={handleSave} disabled={saveLoading} className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-60">
+                {saveLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                {saveLoading ? 'Saving...' : editProduct ? 'Update Product' : 'Add Product'}
               </button>
             </div>
           </div>

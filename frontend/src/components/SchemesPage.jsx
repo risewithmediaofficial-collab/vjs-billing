@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, X, Calendar, User, Phone, MapPin,
-  CreditCard, CheckCircle2, AlertCircle, TrendingUp, HelpCircle
+  CreditCard, CheckCircle2, AlertCircle, TrendingUp, HelpCircle, Loader2
 } from 'lucide-react';
 import { formatCurrency } from '../data.js';
 
@@ -56,6 +56,9 @@ export default function SchemesPage({
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [enrollLoading, setEnrollLoading] = useState(false);
+  const [payLoading, setPayLoading] = useState(false);
 
   // Filtering enrollments
   const filteredSchemes = schemes.filter(s => {
@@ -110,6 +113,7 @@ export default function SchemesPage({
     }
 
     try {
+      setEnrollLoading(true);
       const data = {
         ...enrollForm,
         monthlyAmount: amt,
@@ -138,6 +142,8 @@ export default function SchemesPage({
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message || 'Failed to enroll scheme.');
+    } finally {
+      setEnrollLoading(false);
     }
   };
 
@@ -147,6 +153,7 @@ export default function SchemesPage({
     setSuccess('');
 
     try {
+      setPayLoading(true);
       await onPayScheme(selectedScheme._id, {
         amount: parseFloat(payForm.amount),
         monthIndex: payForm.monthIndex,
@@ -156,34 +163,38 @@ export default function SchemesPage({
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message || 'Failed to record payment.');
+    } finally {
+      setPayLoading(false);
     }
   };
 
-  const handleRedeem = async (scheme) => {
-    if (!window.confirm(`Are you sure you want to redeem the scheme for ${scheme.customerName}?`)) return;
+  const handleRedeem = (scheme) => {
+    setConfirmAction({ type: 'redeem', scheme });
+  };
+
+  const handleCancel = (scheme) => {
+    setConfirmAction({ type: 'cancel', scheme });
+  };
+
+  const executeConfirmAction = async () => {
+    if (!confirmAction) return;
+    const { type, scheme } = confirmAction;
     setError('');
     setSuccess('');
 
     try {
-      await onRedeemScheme(scheme._id);
-      setSuccess('Scheme successfully redeemed!');
+      if (type === 'redeem') {
+        await onRedeemScheme(scheme._id);
+        setSuccess('Scheme successfully redeemed!');
+      } else if (type === 'cancel') {
+        await onCancelScheme(scheme._id);
+        setSuccess('Scheme successfully cancelled.');
+      }
+      setConfirmAction(null);
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.message || 'Failed to redeem scheme.');
-    }
-  };
-
-  const handleCancel = async (scheme) => {
-    if (!window.confirm(`Are you sure you want to cancel the scheme for ${scheme.customerName}? All recorded payments will be archived as cancelled.`)) return;
-    setError('');
-    setSuccess('');
-
-    try {
-      await onCancelScheme(scheme._id);
-      setSuccess('Scheme successfully cancelled.');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError(err.message || 'Failed to cancel scheme.');
+      setError(err.message || `Failed to ${type} scheme.`);
+      setConfirmAction(null);
     }
   };
 
@@ -599,15 +610,18 @@ export default function SchemesPage({
               <button
                 type="button"
                 onClick={() => setShowEnrollModal(false)}
-                className="flex-1 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-200 transition-all"
+                disabled={enrollLoading}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-200 transition-all disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm hover:from-amber-400 hover:to-orange-400 transition-all"
+                disabled={enrollLoading}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm hover:from-amber-400 hover:to-orange-400 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                Save & Enroll
+                {enrollLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                {enrollLoading ? 'Enrolling...' : 'Save & Enroll'}
               </button>
             </div>
           </form>
@@ -659,18 +673,67 @@ export default function SchemesPage({
               <button
                 type="button"
                 onClick={() => setShowPayModal(false)}
-                className="flex-1 py-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 font-semibold text-xs hover:bg-gray-200 transition-all"
+                disabled={payLoading}
+                className="flex-1 py-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 font-semibold text-xs hover:bg-gray-200 transition-all disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs shadow-sm transition-all"
+                disabled={payLoading}
+                className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60 flex items-center justify-center gap-1.5"
               >
-                Record Payment
+                {payLoading ? <Loader2 size={13} className="animate-spin" /> : null}
+                {payLoading ? 'Recording...' : 'Record Payment'}
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ─── Scheme Action Confirmation Modal ─── */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-gray-800">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 w-full max-w-sm animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${confirmAction.type === 'cancel' ? 'bg-red-100' : 'bg-emerald-100'}`}>
+                {confirmAction.type === 'cancel' ? (
+                  <AlertCircle size={20} className="text-red-600" />
+                ) : (
+                  <CheckCircle2 size={20} className="text-emerald-600" />
+                )}
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-800 text-base">
+                  {confirmAction.type === 'cancel' ? 'Cancel Savings Scheme' : 'Redeem Savings Scheme'}
+                </h3>
+                <p className="text-gray-500 text-xs mt-0.5">Please confirm your action</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-6">
+              {confirmAction.type === 'cancel' ? (
+                <>Are you sure you want to cancel the scheme for <span className="font-bold text-gray-800">"{confirmAction.scheme.customerName}"</span>? All recorded payments will be archived as cancelled.</>
+              ) : (
+                <>Are you sure you want to redeem the savings scheme for <span className="font-bold text-gray-800">"{confirmAction.scheme.customerName}"</span>? This will close the scheme and mark it as completed.</>
+              )}
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-650 font-semibold text-sm hover:bg-gray-50 transition-colors"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={executeConfirmAction}
+                className={`flex-1 py-2.5 rounded-xl text-white font-bold text-sm transition-colors shadow-sm ${confirmAction.type === 'cancel' ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+              >
+                {confirmAction.type === 'cancel' ? 'Cancel Scheme' : 'Redeem Scheme'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
