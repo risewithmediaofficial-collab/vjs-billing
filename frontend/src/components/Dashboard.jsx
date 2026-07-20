@@ -35,7 +35,7 @@ export default function Dashboard({ bills, products, staff, currentStaff, onView
     (bill.items || []).forEach(item => {
       const cat = item.category || 'Other';
       if (!todayCategoryMap[cat]) todayCategoryMap[cat] = { qty: 0, revenue: 0 };
-      todayCategoryMap[cat].qty     += item.quantity || 1;
+      todayCategoryMap[cat].qty += item.quantity || 1;
       todayCategoryMap[cat].revenue += item.finalTotal ?? 0;
     });
   });
@@ -48,7 +48,7 @@ export default function Dashboard({ bills, products, staff, currentStaff, onView
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Welcome</h1>
           <p className="text-gray-400 text-sm mt-0.5">{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
         {!isAdmin && (
@@ -144,11 +144,10 @@ export default function Dashboard({ bills, products, staff, currentStaff, onView
                 <div className="flex items-center justify-between sm:justify-end gap-6 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-150">
                   <div className="text-left sm:text-right shrink-0">
                     <p className="text-gray-800 font-bold text-sm">{formatCurrency(bill.totalAmount ?? bill.finalTotal)}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      bill.paymentMethod === 'Cash'  ? 'bg-emerald-100 text-emerald-700' :
-                      bill.paymentMethod === 'UPI'   ? 'bg-blue-100 text-blue-700' :
-                                                       'bg-amber-100 text-amber-700'
-                    }`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${bill.paymentMethod === 'Cash' ? 'bg-emerald-100 text-emerald-700' :
+                        bill.paymentMethod === 'UPI' ? 'bg-blue-100 text-blue-700' :
+                          'bg-amber-100 text-amber-700'
+                      }`}>
                       {bill.paymentMethod}
                     </span>
                   </div>
