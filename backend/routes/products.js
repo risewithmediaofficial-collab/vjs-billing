@@ -39,7 +39,7 @@ router.post('/', auth, async (req, res) => {
     
     res.status(201).json(product);
   } catch (err) {
-    if (err.code === 11000) return res.status(400).json({ message: 'Barcode already exists.' });
+    if (err.code === 11000) return res.status(400).json({ message: 'HUID No already exists.' });
     res.status(500).json({ message: 'Failed to create product.', error: err.message });
   }
 });

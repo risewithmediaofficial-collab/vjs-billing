@@ -41,7 +41,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
 
   const openAdd = () => {
     const nextNum = String(products.length + 1).padStart(3, '0');
-    setForm({ ...emptyProduct, id: `PRD-${nextNum}`, barcode: `89012345${nextNum}`, storeId: currentStore, goldRate, metalType: 'gold' });
+    setForm({ ...emptyProduct, id: `PRD-${nextNum}`, barcode: `HUID-${nextNum}`, storeId: currentStore, goldRate, metalType: 'gold' });
     setImagePreview(null);
     setEditProduct(null);
     setFormError('');
@@ -237,7 +237,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name, ID, barcode or category..."
+          placeholder="Search by name, ID, HUID No or category..."
           className="w-full border border-gray-200 bg-white rounded-xl pl-11 pr-4 py-3 text-gray-800 text-sm
             placeholder-gray-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all shadow-sm"
         />
@@ -293,7 +293,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
                             <p className="text-gray-800 font-semibold text-sm leading-tight">{product.name}</p>
                             {product.barcode && (
                               <p className="text-gray-400 text-xs flex items-center gap-0.5 mt-0.5">
-                                <Barcode size={10} />{product.barcode}
+                                <Barcode size={10} />HUID: {product.barcode}
                               </p>
                             )}
                           </div>
@@ -464,7 +464,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
                                 <p className="text-gray-800 font-semibold text-sm leading-tight">{product.name}</p>
                                 {product.barcode && (
                                   <p className="text-gray-400 text-xs flex items-center gap-0.5 mt-0.5">
-                                    <Barcode size={10} />{product.barcode}
+                                    <Barcode size={10} />HUID: {product.barcode}
                                   </p>
                                 )}
                               </div>
@@ -608,7 +608,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
             <div className="grid grid-cols-2 gap-4">
               {[
                 { key: 'id',   label: 'Product ID *',   type: 'text', placeholder: 'PRD-001', full: false, disabled: !!editProduct },
-                { key: 'barcode', label: 'Barcode',     type: 'text', placeholder: '8901234567890', full: false },
+                { key: 'barcode', label: 'HUID No',     type: 'text', placeholder: 'e.g. HUID-8901234', full: false },
                 { key: 'name', label: 'Product Name *', type: 'text', placeholder: 'Gold Ring 22K', full: true },
               ].map(field => (
                 <div key={field.key} className={field.full ? 'col-span-2' : ''}>

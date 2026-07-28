@@ -31,8 +31,21 @@ router.get('/:id', auth, async (req, res) => {
 // POST /api/loans
 router.post('/', auth, async (req, res) => {
   try {
+    const issueDate = req.body.issueDate ? new Date(req.body.issueDate) : new Date();
+    const tenureMonths = req.body.tenureMonths ? Number(req.body.tenureMonths) : 12;
+    let dueDate = req.body.dueDate;
+    if (!dueDate) {
+      const d = new Date(issueDate);
+      d.setMonth(d.getMonth() + tenureMonths);
+      dueDate = d;
+    }
+
     const loan = new Loan({
       ...req.body,
+      issueDate,
+      tenureMonths,
+      dueDate,
+      overdueInterestRate: req.body.overdueInterestRate !== undefined ? req.body.overdueInterestRate : (req.body.interestRate || 1.5),
       // Fall back to JWT user if frontend didn't send staff info
       staffId:   req.body.staffId   || req.user.id,
       staffName: req.body.staffName || req.user.name,
@@ -64,7 +77,7 @@ router.put('/:id', auth, async (req, res) => {
       if (loan.status === 'SettlePending') {
         await logActivity(req, 'Request Loan Settlement', `Requested settlement for Loan ${loan.loanNumber} (Customer: ${loan.customerName})`);
       } else if (loan.status === 'Closed') {
-        await logActivity(req, 'Approve Loan Settlement', `Approved settlement & closed Loan ${loan.loanNumber} (Customer: ${loan.customerName}, Repaid: ₹${(loan.totalRepaid || 0).toLocaleString('en-IN')})`);
+        await logActivity(req, 'Settle Loan', `Settled & closed Loan ${loan.loanNumber} (Customer: ${loan.customerName}, Repaid: ₹${(loan.totalRepaid || 0).toLocaleString('en-IN')})`);
       } else if (oldLoan.status === 'SettlePending' && loan.status === 'Active') {
         await logActivity(req, 'Reject Loan Settlement', `Rejected settlement request for Loan ${loan.loanNumber} (Customer: ${loan.customerName})`);
       }

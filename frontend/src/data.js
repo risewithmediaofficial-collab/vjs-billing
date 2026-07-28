@@ -7,7 +7,7 @@ export const STORES = [
 export const initialProducts = [
   {
     id: 'PRD-001',
-    barcode: '8901234567890',
+    barcode: 'HUID-8901234567890',
     name: 'Gold Ring 22K',
     category: 'Rings',
     weight: 5.5,
@@ -21,7 +21,7 @@ export const initialProducts = [
   },
   {
     id: 'PRD-002',
-    barcode: '8901234567891',
+    barcode: 'HUID-8901234567891',
     name: 'Gold Necklace 22K',
     category: 'Necklaces',
     weight: 18.2,
@@ -35,7 +35,7 @@ export const initialProducts = [
   },
   {
     id: 'PRD-003',
-    barcode: '8901234567892',
+    barcode: 'HUID-8901234567892',
     name: 'Diamond Earrings',
     category: 'Earrings',
     weight: 2.1,
@@ -49,7 +49,7 @@ export const initialProducts = [
   },
   {
     id: 'PRD-004',
-    barcode: '8901234567893',
+    barcode: 'HUID-8901234567893',
     name: 'Gold Bracelet 22K',
     category: 'Bracelets',
     weight: 12.5,
@@ -181,25 +181,60 @@ export function generateLoanNumber(existingLoans) {
   return `GL-${year}-${String(count).padStart(4, '0')}`;
 }
 
-// Calculate simple interest based on monthly rate
-// If months < 1, defaults to 1 month minimum interest
-export function calculateLoanInterest(principal, ratePerMonth, issueDateStr, settlementDateStr) {
-  const issue = new Date(issueDateStr);
-  const settle = new Date(settlementDateStr);
-  
-  // Calculate months difference
-  const diffTime = Math.abs(settle - issue);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  let months = diffDays / 30; // Approx month calculation
-  
-  // Minimum 1 month interest
-  if (months < 1) months = 1;
+export const JEWEL_LOAN_TERMS = [
+  '1. The pledged article is held in safe custody as security for the loan amount.',
+  '2. Interest is payable monthly/yearly at the agreed standard rate during the 1-year (or agreed) tenure.',
+  '3. OVERDUE CLAUSE: If the loan amount is not paid or renewed on or before the due date, an increased overdue interest rate will apply as set by management.',
+  '4. In case of non-repayment after due date & notice period, management reserves the right to auction the pledged item to recover dues.',
+  '5. Original Jewel Loan Card Bill / Receipt must be presented at the time of settlement or renewal.',
+];
 
-  const interestAmount = (principal * ratePerMonth * months) / 100;
+// Calculate simple & overdue interest based on monthly rate and due date
+// If total duration < 1 month, defaults to 1 month minimum interest
+export function calculateLoanInterest(principal, standardRatePerMonth, issueDateStr, settlementDateStr, overdueRatePerMonth = null, dueDateStr = null) {
+  const issue = new Date(issueDateStr);
+  const settle = new Date(settlementDateStr || new Date());
+  
+  let due = dueDateStr ? new Date(dueDateStr) : null;
+  if (!due) {
+    due = new Date(issue);
+    due.setFullYear(due.getFullYear() + 1); // default 1 year
+  }
+
+  const overdueRate = overdueRatePerMonth !== null && overdueRatePerMonth !== undefined ? overdueRatePerMonth : standardRatePerMonth;
+
+  // Calculate total days difference
+  const totalMs = Math.max(0, settle - issue);
+  const totalDays = Math.ceil(totalMs / (1000 * 60 * 60 * 24));
+  let totalMonths = totalDays / 30;
+  if (totalMonths < 1) totalMonths = 1;
+
+  const isOverdue = settle > due;
+
+  let normalMonths = totalMonths;
+  let overdueMonths = 0;
+
+  if (isOverdue && due > issue) {
+    const normalDays = Math.max(0, Math.ceil((due - issue) / (1000 * 60 * 60 * 24)));
+    normalMonths = normalDays / 30;
+    const overdueDays = Math.max(0, Math.ceil((settle - due) / (1000 * 60 * 60 * 24)));
+    overdueMonths = overdueDays / 30;
+  }
+
+  const normalInterest = (principal * standardRatePerMonth * normalMonths) / 100;
+  const overdueInterest = (principal * overdueRate * overdueMonths) / 100;
+  const totalInterest = normalInterest + overdueInterest;
+
   return {
-    months: months.toFixed(1),
-    interestAmount: Math.round(interestAmount),
-    totalRepayment: Math.round(principal + interestAmount)
+    months: totalMonths.toFixed(1),
+    normalMonths: normalMonths.toFixed(1),
+    overdueMonths: overdueMonths.toFixed(1),
+    normalInterest: Math.round(normalInterest),
+    overdueInterest: Math.round(overdueInterest),
+    interestAmount: Math.round(totalInterest),
+    totalRepayment: Math.round(principal + totalInterest),
+    isOverdue,
+    dueDate: due,
   };
 }
 

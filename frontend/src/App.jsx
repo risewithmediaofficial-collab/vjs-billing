@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './index.css';
 import { STORES } from './data.js';
 import { ToastProvider, useToast } from './ToastContext.jsx';
+import { Menu, X } from 'lucide-react';
 import {
   authApi, productsApi, billsApi, loansApi, staffApi, settingsApi, schemesApi, activityLogsApi,
   getToken, getCurrentUser, setCurrentUser, clearToken,
@@ -25,6 +26,7 @@ function AppInner() {
   const [currentStaff, setCurrentStaff] = useState(() => getCurrentUser());
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
   const [products, setProducts] = useState([]);
   const [bills, setBills] = useState([]);
@@ -118,16 +120,19 @@ function AppInner() {
   };
 
   // ── Bill creation ──────────────────────────────────────────────────────────
-  const handleGenerateBill = async (bill) => {
+  const handleGenerateBill = async (bill, autoNavigate = true) => {
     try {
       const newBill = await billsApi.create({ ...bill, storeId: currentStore });
       setBills(prev => [newBill, ...prev]);
       // Refresh products to get updated stock
       const updatedProducts = await productsApi.getAll(currentStore);
       setProducts(updatedProducts || []);
-      setPreviewBill(bill);
-      setActiveTab('invoices');
-      toast.success('Bill generated successfully!');
+      setPreviewBill(newBill);
+      if (autoNavigate) {
+        setActiveTab('invoices');
+      }
+      toast.success(`Bill ${newBill.invoiceNumber || ''} generated successfully!`);
+      return newBill;
     } catch (err) {
       toast.error(err.message || 'Failed to generate bill. Please try again.', 'Billing Error');
       throw err;
@@ -331,6 +336,7 @@ function AppInner() {
         onLogout={handleLogout}
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
+        onHover={setIsSidebarHovered}
       />
 
       <main className={`transition-all duration-300 ${sidebarWidth} min-h-screen`}>
@@ -338,24 +344,25 @@ function AppInner() {
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="hidden lg:block">
+              <div>
                 <button
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 ${
+                    isSidebarHovered && sidebarCollapsed
+                      ? 'bg-amber-500 text-white shadow-lg ring-4 ring-amber-300 scale-110'
+                      : 'bg-gray-100 hover:bg-amber-100 hover:text-amber-600 text-gray-600 border border-gray-200'
+                  }`}
+                  title={sidebarCollapsed ? "Open Menu" : "Close Menu"}
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <rect y="2" width="16" height="2" rx="1" />
-                    <rect y="7" width="16" height="2" rx="1" />
-                    <rect y="12" width="16" height="2" rx="1" />
-                  </svg>
+                  {sidebarCollapsed ? <Menu size={18} /> : <X size={18} />}
                 </button>
               </div>
               <div className="flex items-center gap-4">
-                <h2 className="text-gray-800 font-bold text-lg capitalize lg:block hidden">
+                <h2 className="text-gray-800 font-bold text-lg capitalize font-display">
                   {activeTab === 'billing'   ? 'New Bill'  :
                    activeTab === 'invoices'  ? 'Invoices'  :
                    activeTab === 'inventory' ? 'Inventory' :
-                   activeTab === 'loans'     ? 'Gold Loans' :
+                   activeTab === 'loans'     ? 'Jewel Loans' :
                    activeTab === 'schemes'   ? 'Gold Schemes' :
                    activeTab}
                 </h2>

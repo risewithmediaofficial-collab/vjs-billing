@@ -19,14 +19,14 @@ const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'billing', label: 'New Bill', icon: ShoppingCart },
   { id: 'invoices', label: 'Invoices', icon: FileText },
-  { id: 'loans', label: 'Gold Loans', icon: Wallet },
+  { id: 'loans', label: 'Jewel Loans', icon: Wallet },
   { id: 'schemes', label: 'Schemes', icon: Sparkles },
   { id: 'inventory', label: 'Inventory', icon: Package },
   { id: 'staff', label: 'Staff', icon: Users, adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];
 
-export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogout, collapsed, setCollapsed }) {
+export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogout, collapsed, setCollapsed, onHover }) {
   return (
     <>
       {/* Mobile overlay */}
@@ -38,6 +38,8 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
       )}
 
       <aside
+        onMouseEnter={() => collapsed && onHover && onHover(true)}
+        onMouseLeave={() => onHover && onHover(false)}
         className={`
           fixed top-0 left-0 h-full z-30 flex flex-col
           bg-white border-r border-gray-200
@@ -45,7 +47,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
           ${collapsed ? '-translate-x-full lg:translate-x-0 lg:w-20' : 'translate-x-0 w-72'}
         `}
       >
-        {/* Logo */}
+        {/* Logo & Close Button */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shrink-0 shadow-md shadow-amber-300/50">
             <Gem size={20} className="text-white" />
@@ -56,12 +58,15 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
               <p className="text-xs text-amber-600 font-semibold tracking-widest">JEWELLERY</p>
             </div>
           )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="ml-auto lg:flex hidden text-gray-400 hover:text-gray-700 transition-colors"
-          >
-            {collapsed ? <Menu size={18} /> : <X size={18} />}
-          </button>
+          {!collapsed && (
+            <button
+              onClick={() => setCollapsed(true)}
+              className="ml-auto text-gray-400 hover:text-gray-700 transition-colors"
+              title="Close Sidebar"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
 
         {/* Nav Items */}
@@ -124,14 +129,6 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
           </div>
         )}
       </aside>
-
-      {/* Mobile toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="fixed top-4 left-4 z-40 lg:hidden w-10 h-10 rounded-xl bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-md animate-fade-in"
-      >
-        {collapsed ? <Menu size={20} /> : <X size={20} />}
-      </button>
     </>
   );
 }

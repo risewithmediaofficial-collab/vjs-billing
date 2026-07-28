@@ -1,9 +1,93 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, X, Calendar, User, Phone, MapPin,
-  CreditCard, CheckCircle2, AlertCircle, TrendingUp, HelpCircle, Loader2
+  CreditCard, CheckCircle2, AlertCircle, TrendingUp, HelpCircle, Loader2, Printer
 } from 'lucide-react';
-import { formatCurrency } from '../data.js';
+import { formatCurrency, formatDate, SHOP_INFO } from '../data.js';
+
+function SchemeReceipt({ scheme, onClose }) {
+  const handlePrint = () => {
+    const printContent = document.getElementById('scheme-print-area').innerHTML;
+    const w = window.open('', '_blank');
+    w.document.write(`
+      <!DOCTYPE html><html><head>
+      <meta charset="UTF-8">
+      <title>Scheme Receipt - ${SHOP_INFO.name}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; }
+        @media print { @page { margin: 1cm; } }
+      </style>
+      </head><body>${printContent}</body></html>
+    `);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 500);
+  };
+
+  const totalPaid = scheme.payments ? scheme.payments.reduce((s, p) => s + (p.amount || 0), 0) : 0;
+  const paidCount = scheme.payments ? scheme.payments.length : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-8 px-4">
+      <div className="w-full max-w-xl bg-white rounded-2xl p-6 shadow-2xl border border-gray-200 animate-fade-in">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+          <h2 className="text-gray-800 font-bold text-xl">Scheme Passbook / Receipt</h2>
+          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <button onClick={handlePrint} className="mb-4 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-semibold text-sm transition-all shadow-sm w-full">
+          <Printer size={16} /> Print Receipt
+        </button>
+
+        <div className="rounded-xl overflow-hidden border border-gray-200 bg-gray-50 p-4">
+          <div id="scheme-print-area" className="font-mono text-sm bg-white text-gray-900 p-8 max-w-[400px] mx-auto">
+            <div className="text-center mb-4 border-b-2 border-gray-800 pb-4">
+              <div className="font-bold text-xl mb-1">{SHOP_INFO.name}</div>
+              <div className="text-xs text-gray-600">{SHOP_INFO.address}</div>
+              <div className="text-xs text-gray-600">Ph: {SHOP_INFO.phone}</div>
+              <div className="text-xs font-bold mt-2 border border-gray-800 p-1">
+                GOLD SAVINGS SCHEME RECEIPT
+              </div>
+            </div>
+
+            <div className="mb-4 text-xs space-y-1">
+              <div className="flex justify-between"><span className="font-semibold">Scheme:</span><span>{scheme.schemeName}</span></div>
+              <div className="flex justify-between"><span className="font-semibold">Customer:</span><span>{scheme.customerName}</span></div>
+              <div className="flex justify-between"><span className="font-semibold">Mobile:</span><span>{scheme.customerPhone}</span></div>
+              <div className="flex justify-between"><span className="font-semibold">Monthly Amount:</span><span>{formatCurrency(scheme.monthlyAmount)}</span></div>
+              <div className="flex justify-between"><span className="font-semibold">Status:</span><span className="uppercase">{scheme.status}</span></div>
+            </div>
+
+            <div className="border-t border-b border-gray-400 py-3 mb-3 text-xs space-y-1">
+              <div className="font-bold mb-2">Payment History ({paidCount}/{scheme.totalMonths} Paid):</div>
+              {scheme.payments && scheme.payments.length > 0 ? (
+                scheme.payments.map((p, idx) => (
+                  <div key={idx} className="flex justify-between text-[11px]">
+                    <span>Month {p.monthIndex + 1} ({formatDate(p.date)})</span>
+                    <span>{formatCurrency(p.amount)}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-gray-500 italic text-[11px]">No payments recorded yet.</div>
+              )}
+              <div className="flex justify-between border-t border-gray-300 pt-2 mt-2 font-bold text-sm">
+                <span>TOTAL ACCUMULATED:</span>
+                <span>{formatCurrency(totalPaid)}</span>
+              </div>
+            </div>
+
+            <div className="text-center mt-6 text-xs text-gray-500 border-t border-gray-300 pt-4">
+              <p>Thank you for saving with {SHOP_INFO.name}.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function SchemesPage({
   schemes = [],
@@ -96,6 +180,8 @@ export default function SchemesPage({
     setShowPayModal(true);
   };
 
+  const [previewScheme, setPreviewScheme] = useState(null);
+
   const handleEnrollSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -122,11 +208,14 @@ export default function SchemesPage({
         interestRate: enrollForm.schemeType === 'interest_plan' ? (parseFloat(enrollForm.interestRate) || 0) : 0,
         goldRateAtEnrollment: goldRate, // lock today's gold rate
         storeId: currentStore,
+        payments: [],
       };
 
       await onEnrollScheme(data);
+
       setSuccess('Scheme enrollment successful!');
       setShowEnrollModal(false);
+      setPreviewScheme(data);
       setEnrollForm({
         customerName: '',
         customerPhone: '',
@@ -154,12 +243,18 @@ export default function SchemesPage({
 
     try {
       setPayLoading(true);
-      await onPayScheme(selectedScheme._id, {
-        amount: parseFloat(payForm.amount),
+      const payAmt = parseFloat(payForm.amount);
+      await onPayScheme(selectedScheme._id || selectedScheme.id, {
+        amount: payAmt,
         monthIndex: payForm.monthIndex,
       });
+
+      const updatedPayments = [...(selectedScheme.payments || []), { monthIndex: payForm.monthIndex, amount: payAmt, date: new Date().toISOString() }];
+      const updatedScheme = { ...selectedScheme, payments: updatedPayments };
+
       setSuccess('Payment recorded successfully!');
       setShowPayModal(false);
+      setPreviewScheme(updatedScheme);
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message || 'Failed to record payment.');
@@ -184,10 +279,11 @@ export default function SchemesPage({
 
     try {
       if (type === 'redeem') {
-        await onRedeemScheme(scheme._id);
+        await onRedeemScheme(scheme._id || scheme.id);
         setSuccess('Scheme successfully redeemed!');
+        setPreviewScheme({ ...scheme, status: 'completed' });
       } else if (type === 'cancel') {
-        await onCancelScheme(scheme._id);
+        await onCancelScheme(scheme._id || scheme.id);
         setSuccess('Scheme successfully cancelled.');
       }
       setConfirmAction(null);
@@ -370,8 +466,15 @@ export default function SchemesPage({
                       Record Pay (M{nextDueMonth})
                     </button>
                     <button
+                      onClick={() => setPreviewScheme(scheme)}
+                      className="px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 transition-all flex items-center gap-1 text-xs font-semibold"
+                      title="View Passbook / Receipt"
+                    >
+                      <Printer size={13} /> Receipt
+                    </button>
+                    <button
                       onClick={() => handleCancel(scheme)}
-                      className="px-3 py-2 rounded-xl border border-gray-200 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                      className="px-3 py-2 rounded-xl border border-gray-200 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all text-xs font-semibold"
                       title="Cancel scheme"
                     >
                       Cancel
@@ -735,6 +838,11 @@ export default function SchemesPage({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Scheme Receipt / Passbook Modal */}
+      {previewScheme && (
+        <SchemeReceipt scheme={previewScheme} onClose={() => setPreviewScheme(null)} />
       )}
     </div>
   );
