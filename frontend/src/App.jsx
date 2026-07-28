@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './index.css';
 import { STORES } from './data.js';
 import { ToastProvider, useToast } from './ToastContext.jsx';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Lock, ShieldAlert, Key, Eye, EyeOff, Loader2 } from 'lucide-react';
 import {
   authApi, productsApi, billsApi, loansApi, staffApi, settingsApi, schemesApi, activityLogsApi,
   getToken, getCurrentUser, setCurrentUser, clearToken,
@@ -13,6 +13,7 @@ import Dashboard from './components/Dashboard.jsx';
 import BillingPage from './components/BillingPage.jsx';
 import InvoicesPage from './components/InvoicesPage.jsx';
 import InventoryPage from './components/InventoryPage.jsx';
+import SecretInventoryPage from './components/SecretInventoryPage.jsx';
 import StaffPage from './components/StaffPage.jsx';
 import SettingsPage from './components/SettingsPage.jsx';
 import BillPreview from './components/BillPreview.jsx';
@@ -43,6 +44,106 @@ function AppInner() {
 
   const [loading, setLoading] = useState(false);
   const [dbError, setDbError] = useState('');
+
+  // ── Secret Vault Auth & Path handling ─────────────────────────────────────────
+  const [isSecretVaultAuth, setIsSecretVaultAuth] = useState(false);
+  const [showSecretAuthModal, setShowSecretAuthModal] = useState(false);
+  const [secretUserInput, setSecretUserInput] = useState('System Admin');
+  const [secretPinInput, setSecretPinInput] = useState('');
+  const [secretAuthError, setSecretAuthError] = useState('');
+  const [secretAuthLoading, setSecretAuthLoading] = useState(false);
+  const [showPasswordToggle, setShowPasswordToggle] = useState(false);
+
+  const checkUrlPathForSecret = useCallback(() => {
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+    const isSecretPath = path.includes('inventory1') || path.includes('invetory1') || path.includes('secret-inventory') ||
+                         hash.includes('inventory1') || hash.includes('invetory1') || hash.includes('secret-inventory');
+
+    if (isSecretPath) {
+      if (!isSecretVaultAuth) {
+        setShowSecretAuthModal(true);
+      } else {
+        setActiveTab('secret-inventory');
+      }
+    }
+  }, [isSecretVaultAuth]);
+
+  useEffect(() => {
+    checkUrlPathForSecret();
+    window.addEventListener('popstate', checkUrlPathForSecret);
+    window.addEventListener('hashchange', checkUrlPathForSecret);
+    return () => {
+      window.removeEventListener('popstate', checkUrlPathForSecret);
+      window.removeEventListener('hashchange', checkUrlPathForSecret);
+    };
+  }, [checkUrlPathForSecret]);
+
+  const handleVerifySecretVault = async (e) => {
+    if (e) e.preventDefault();
+    const user = secretUserInput.trim() || 'System Admin';
+    const pin = secretPinInput.trim();
+    if (!pin) {
+      setSecretAuthError('Please enter password or PIN.');
+      return;
+    }
+    setSecretAuthLoading(true);
+    setSecretAuthError('');
+    try {
+      let authenticated = false;
+      try {
+        await authApi.login(user, pin);
+        authenticated = true;
+      } catch {
+        if (currentStaff?.role === 'Admin') {
+          try {
+            await authApi.login(currentStaff.name, pin);
+            authenticated = true;
+          } catch {
+            authenticated = false;
+          }
+        }
+      }
+
+      if (authenticated) {
+        setIsSecretVaultAuth(true);
+        setShowSecretAuthModal(false);
+        setSecretPinInput('');
+        setActiveTab('secret-inventory');
+        if (!window.location.pathname.includes('inventory1')) {
+          window.history.pushState(null, '', '/inventory1');
+        }
+        toast.success('Login successful!');
+      } else {
+        setSecretAuthError('Invalid username or password.');
+      }
+    } catch (err) {
+      setSecretAuthError(err.message || 'Authentication error.');
+    } finally {
+      setSecretAuthLoading(false);
+    }
+  };
+
+  const handleCancelSecretAuth = () => {
+    setShowSecretAuthModal(false);
+    setSecretPinInput('');
+    setSecretAuthError('');
+    if (activeTab === 'secret-inventory') {
+      setActiveTab('dashboard');
+    }
+    if (window.location.pathname.includes('inventory1') || window.location.pathname.includes('invetory1')) {
+      window.history.pushState(null, '', '/');
+    }
+  };
+
+  const handleLockSecretVault = () => {
+    setIsSecretVaultAuth(false);
+    setActiveTab('dashboard');
+    if (window.location.pathname.includes('inventory1') || window.location.pathname.includes('invetory1')) {
+      window.history.pushState(null, '', '/');
+    }
+    toast.info('Secret Vault locked.');
+  };
 
   // ── Load all data from backend ─────────────────────────────────────────────
   const loadData = useCallback(async (storeId) => {
@@ -359,11 +460,12 @@ function AppInner() {
               </div>
               <div className="flex items-center gap-4">
                 <h2 className="text-gray-800 font-bold text-lg capitalize font-display">
-                  {activeTab === 'billing'   ? 'New Bill'  :
-                   activeTab === 'invoices'  ? 'Invoices'  :
-                   activeTab === 'inventory' ? 'Inventory' :
-                   activeTab === 'loans'     ? 'Jewel Loans' :
-                   activeTab === 'schemes'   ? 'Gold Schemes' :
+                  {activeTab === 'billing'          ? 'New Bill'  :
+                   activeTab === 'invoices'         ? 'Invoices'  :
+                   activeTab === 'inventory'        ? 'Inventory' :
+                   activeTab === 'secret-inventory' ? 'Secret Inventory Vault' :
+                   activeTab === 'loans'            ? 'Jewel Loans' :
+                   activeTab === 'schemes'          ? 'Gold Schemes' :
                    activeTab}
                 </h2>
 
@@ -425,7 +527,7 @@ function AppInner() {
           {activeTab === 'dashboard' && (
             <Dashboard
               bills={storeBills}
-              products={storeProducts}
+              products={storeProducts.filter(p => !p.isSecret)}
               staff={staff}
               currentStaff={currentStaff}
               onViewBill={setPreviewBill}
@@ -435,7 +537,7 @@ function AppInner() {
           )}
           {activeTab === 'billing' && (
             <BillingPage
-              products={storeProducts}
+              products={storeProducts.filter(p => !p.isSecret)}
               bills={storeBills}
               currentStaff={currentStaff}
               onGenerateBill={handleGenerateBill}
@@ -472,6 +574,18 @@ function AppInner() {
           )}
           {activeTab === 'inventory' && (
             <InventoryPage
+              products={products.filter(p => !p.isSecret)}
+              onCreateProduct={handleCreateProduct}
+              onUpdateProduct={handleUpdateProduct}
+              onDeleteProduct={handleDeleteProduct}
+              currentStore={currentStore}
+              currentStaff={currentStaff}
+              goldRate={goldRate}
+              silverRate={silverRate}
+            />
+          )}
+          {activeTab === 'secret-inventory' && (
+            <SecretInventoryPage
               products={products}
               onCreateProduct={handleCreateProduct}
               onUpdateProduct={handleUpdateProduct}
@@ -480,6 +594,7 @@ function AppInner() {
               currentStaff={currentStaff}
               goldRate={goldRate}
               silverRate={silverRate}
+              onLockVault={handleLockSecretVault}
             />
           )}
           {activeTab === 'staff' && (
@@ -507,6 +622,86 @@ function AppInner() {
       {/* Bill Preview Modal */}
       {previewBill && (
         <BillPreview bill={previewBill} onClose={() => setPreviewBill(null)} />
+      )}
+
+      {/* User Login Modal for Path Authentication */}
+      {showSecretAuthModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-gray-200 shadow-2xl overflow-hidden animate-scale-up">
+            <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-6 text-center relative">
+              <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-white mx-auto mb-3 shadow-inner">
+                <Lock size={28} />
+              </div>
+              <h3 className="text-xl font-bold font-display text-white">User Verification</h3>
+              <p className="text-xs text-amber-100 mt-1">
+                Please enter your login username and password to access this page.
+              </p>
+            </div>
+
+            <form onSubmit={handleVerifySecretVault} className="p-6 space-y-4">
+              {secretAuthError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2">
+                  <ShieldAlert size={16} className="shrink-0 text-red-600" />
+                  {secretAuthError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={secretUserInput}
+                  onChange={(e) => setSecretUserInput(e.target.value)}
+                  placeholder="Enter Username"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Password / PIN
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPasswordToggle ? "text" : "password"}
+                    value={secretPinInput}
+                    onChange={(e) => setSecretPinInput(e.target.value)}
+                    placeholder="Enter Password or PIN"
+                    autoFocus
+                    className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordToggle(!showPasswordToggle)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPasswordToggle ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCancelSecretAuth}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={secretAuthLoading}
+                  className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {secretAuthLoading ? <Loader2 size={18} className="animate-spin" /> : <Key size={18} />}
+                  Login
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

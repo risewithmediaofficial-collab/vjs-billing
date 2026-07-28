@@ -13,6 +13,7 @@ const ProductSchema = new mongoose.Schema(
     stock:       { type: Number, default: 0 },
     storeId:     { type: String, required: true },
     image:       { type: String, default: null },        // base64 or URL
+    isSecret:    { type: Boolean, default: false },      // Secret stock flag
   },
   { timestamps: true }
 );
