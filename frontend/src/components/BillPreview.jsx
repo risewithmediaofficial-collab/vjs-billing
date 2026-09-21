@@ -53,23 +53,35 @@ function BillContent({ bill, viewMode }) {
     return purity;
   };
 
+  // Detect whether the bill contains Silver items, Gold items, or both
+  const hasSilver = (bill.items || []).some(item => {
+    const purity = (item.purity || '').toLowerCase();
+    const cat = (item.category || '').toLowerCase();
+    const name = (item.name || '').toLowerCase();
+    return purity.includes('silver') || cat.includes('silver') || name.includes('silver') || item.metalType === 'silver';
+  });
+
+  const hasGold = (bill.items || []).some(item => {
+    const purity = (item.purity || '').toLowerCase();
+    const cat = (item.category || '').toLowerCase();
+    const name = (item.name || '').toLowerCase();
+    const isSilver = purity.includes('silver') || cat.includes('silver') || name.includes('silver') || item.metalType === 'silver';
+    return !isSilver;
+  }) || (!hasSilver);
+
   return (
     <div id="bill-front-print-area" className="bg-white text-gray-900 font-sans text-xs max-w-[650px] mx-auto p-4 sm:p-6 border border-gray-300 shadow-sm print:shadow-none print:border-0 print:p-0">
       {/* ── Top Header ─────────────────────────────────────────── */}
       <div className="border-b-2 border-amber-500 pb-3 mb-2">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-xl shadow-md shrink-0">
-              V
+          <div className="flex items-start gap-2.5">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-xl shadow-sm shrink-0 border border-amber-400">
+              VJS
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-black text-amber-800 tracking-wide uppercase font-serif">
-                {SHOP_INFO.name}
-              </h1>
-              <p className="text-[10px] font-semibold text-gray-600 tracking-wider uppercase">
-                Gold • Diamond • Platinum • Silver
-              </p>
-              <p className="text-[10px] text-gray-500 mt-0.5">{SHOP_INFO.address}</p>
+              <h1 className="font-extrabold text-base text-gray-900 tracking-wide uppercase">{SHOP_INFO.name}</h1>
+              <p className="text-[10px] text-gray-600 leading-tight">{SHOP_INFO.address}</p>
+              <p className="text-[10px] text-gray-600">Ph: {SHOP_INFO.phone} | Email: {SHOP_INFO.email}</p>
             </div>
           </div>
           <div className="text-right text-[10px] text-gray-600 shrink-0">
@@ -115,8 +127,12 @@ function BillContent({ bill, viewMode }) {
         <div className="space-y-1 pl-2">
           <p><span className="font-bold text-gray-700">{isRough ? 'Quotation Date:' : 'Invoice Date:'}</span> {formatDate(bill.createdAt)}</p>
           <p><span className="font-bold text-gray-700">{isRough ? 'Estimate No:' : 'Invoice No:'}</span> <span className="font-bold text-amber-700">{bill.invoiceNumber}</span></p>
-          <p><span className="font-bold text-gray-700">Gold Rate (22K):</span> ₹{(bill.goldRate || 7500).toLocaleString('en-IN')}/g</p>
-          <p><span className="font-bold text-gray-700">Silver Rate:</span> ₹{(bill.silverRate || 85).toLocaleString('en-IN')}/g</p>
+          {hasGold && (
+            <p><span className="font-bold text-gray-700">Gold Rate (22K):</span> ₹{(bill.goldRate || 7500).toLocaleString('en-IN')}/g</p>
+          )}
+          {hasSilver && (
+            <p><span className="font-bold text-gray-700">Silver Rate:</span> ₹{(bill.silverRate || 85).toLocaleString('en-IN')}/g</p>
+          )}
         </div>
       </div>
 
