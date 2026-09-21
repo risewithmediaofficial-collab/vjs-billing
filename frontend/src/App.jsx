@@ -19,6 +19,7 @@ import SettingsPage from './components/SettingsPage.jsx';
 import BillPreview from './components/BillPreview.jsx';
 import LoansPage from './components/LoansPage.jsx';
 import SchemesPage from './components/SchemesPage.jsx';
+import useScrollLock, { getScrollLockCount } from './useScrollLock.js';
 
 // ── Inner app wrapped by ToastProvider ────────────────────────────────────────
 function AppInner() {
@@ -26,8 +27,24 @@ function AppInner() {
 
   const [currentStaff, setCurrentStaff] = useState(() => getCurrentUser());
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1024;
+    }
+    return false;
+  });
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+
+  // Auto-collapse sidebar if user resizes down to mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setSidebarCollapsed(true);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const [products, setProducts] = useState([]);
   const [bills, setBills] = useState([]);
@@ -78,6 +95,11 @@ function AppInner() {
       window.removeEventListener('hashchange', checkUrlPathForSecret);
     };
   }, [checkUrlPathForSecret]);
+
+  // Lock screen scroll when preview bill or secret vault modal is open
+  useScrollLock(!!previewBill || showSecretAuthModal);
+
+
 
   const handleVerifySecretVault = async (e) => {
     if (e) e.preventDefault();
@@ -259,6 +281,8 @@ function AppInner() {
         toast.success('Loan settled and closed successfully!');
       } else if (updatedLoan.status === 'SettlePending') {
         toast.info('Settlement request submitted for Admin approval.');
+      } else if (updatedLoan.lastRenewalDate && updatedLoan.renewals?.length) {
+        toast.success(`Loan #${updatedLoan.loanNumber} renewed successfully!`);
       } else {
         toast.success('Loan updated successfully!');
       }
@@ -440,30 +464,28 @@ function AppInner() {
         onHover={setIsSidebarHovered}
       />
 
-      <main className={`transition-all duration-300 ${sidebarWidth} min-h-screen`}>
+      <main className={`transition-all duration-300 ${sidebarWidth} min-h-screen w-full max-w-full overflow-x-hidden min-w-0`}>
         {/* Top bar */}
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div>
-                <button
-                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 ${
-                    isSidebarHovered && sidebarCollapsed
-                      ? 'bg-amber-500 text-white shadow-lg ring-4 ring-amber-300 scale-110'
-                      : 'bg-gray-100 hover:bg-amber-100 hover:text-amber-600 text-gray-600 border border-gray-200'
-                  }`}
-                  title={sidebarCollapsed ? "Open Menu" : "Close Menu"}
-                >
-                  {sidebarCollapsed ? <Menu size={18} /> : <X size={18} />}
-                </button>
-              </div>
-              <div className="flex items-center gap-4">
-                <h2 className="text-gray-800 font-bold text-lg capitalize font-display">
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-3 sm:px-6 py-2.5 sm:py-3 shadow-xs">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${
+                  isSidebarHovered && sidebarCollapsed
+                    ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300 scale-105'
+                    : 'bg-gray-100 hover:bg-amber-100 hover:text-amber-600 text-gray-600 border border-gray-200'
+                }`}
+                title={sidebarCollapsed ? "Open Menu" : "Close Menu"}
+              >
+                {sidebarCollapsed ? <Menu size={18} /> : <X size={18} />}
+              </button>
+
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <h2 className="text-gray-800 font-bold text-sm sm:text-lg capitalize font-display truncate">
                   {activeTab === 'billing'          ? 'New Bill'  :
                    activeTab === 'invoices'         ? 'Invoices'  :
                    activeTab === 'inventory'        ? 'Inventory' :
-                   activeTab === 'secret-inventory' ? 'Secret Inventory Vault' :
                    activeTab === 'loans'            ? 'Jewel Loans' :
                    activeTab === 'schemes'          ? 'Gold Schemes' :
                    activeTab}
@@ -474,24 +496,24 @@ function AppInner() {
                   <select
                     value={currentStore}
                     onChange={(e) => setCurrentStore(e.target.value)}
-                    className="bg-amber-50 border border-amber-300 text-amber-700 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-500 font-medium"
+                    className="bg-amber-50 border border-amber-300 text-amber-800 text-xs sm:text-sm rounded-lg px-2 sm:px-2.5 py-1 focus:outline-none focus:border-amber-500 font-medium max-w-[110px] sm:max-w-[160px] truncate"
                   >
                     {STORES.map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
                 ) : (
-                  <span className="text-gray-500 text-sm hidden sm:inline-block bg-gray-100 px-3 py-1 rounded-lg">
+                  <span className="text-gray-500 text-xs sm:text-sm hidden md:inline-block bg-gray-100 px-2.5 py-1 rounded-lg">
                     {STORES.find(s => s.id === currentStore)?.name}
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               {/* DB status */}
               {dbError && (
-                <span className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-lg hidden sm:block">
+                <span className="text-[10px] sm:text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-lg">
                   {dbError}
                 </span>
               )}
@@ -501,29 +523,34 @@ function AppInner() {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
               )}
-              {/* Gold rate badge */}
+              {/* Compact Gold rate pill on mobile */}
+              <div className="sm:hidden flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                <span className="text-amber-800 font-bold text-[11px]">₹{goldRate.toLocaleString('en-IN')}/g</span>
+              </div>
+              {/* Gold rate badge for desktop */}
               <div className="hidden sm:flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                 <span className="text-amber-700 font-semibold text-sm">Gold ₹{goldRate.toLocaleString('en-IN')}/g</span>
               </div>
-              {/* Silver rate badge */}
-              <div className="hidden sm:flex items-center gap-2 bg-slate-50 border border-blue-200 rounded-xl px-3 py-1.5">
+              {/* Silver rate badge for desktop */}
+              <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-blue-200 rounded-xl px-3 py-1.5">
                 <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
                 <span className="text-blue-700 font-semibold text-sm">Silver ₹{silverRate.toLocaleString('en-IN')}/g</span>
               </div>
               {/* Staff badge */}
-              <div className="flex items-center gap-2 bg-gray-100 border border-gray-200 rounded-xl px-3 py-1.5">
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-gray-100 border border-gray-200 rounded-xl px-2 sm:px-3 py-1 sm:py-1.5">
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-xs">
                   {currentStaff.name.charAt(0)}
                 </div>
-                <span className="text-gray-700 text-sm font-medium hidden sm:block">{currentStaff.name}</span>
+                <span className="text-gray-700 text-xs sm:text-sm font-medium hidden sm:block truncate max-w-[100px]">{currentStaff.name}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Page Content */}
-        <div className="p-6">
+        <div className="p-3 sm:p-4 lg:p-5 max-w-full min-w-0">
           {activeTab === 'dashboard' && (
             <Dashboard
               bills={storeBills}

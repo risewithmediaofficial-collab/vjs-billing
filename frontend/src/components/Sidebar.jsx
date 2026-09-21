@@ -61,10 +61,10 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
           {!collapsed && (
             <button
               onClick={() => setCollapsed(true)}
-              className="ml-auto text-gray-400 hover:text-gray-700 transition-colors"
+              className="ml-auto text-gray-400 hover:text-gray-700 transition-colors p-1.5 rounded-lg hover:bg-gray-100 lg:hidden"
               title="Close Sidebar"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           )}
         </div>
@@ -74,7 +74,12 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
           {navItems.filter(item => !item.adminOnly || (currentStaff && (currentStaff.role === 'Admin' || currentStaff.role === 'Manager'))).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
-              onClick={() => setActiveTab(id)}
+              onClick={() => {
+                setActiveTab(id);
+                if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                  setCollapsed(true);
+                }
+              }}
               className={`
                 w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
                 transition-all duration-200 group relative
@@ -118,8 +123,13 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
               )}
               {!collapsed && (
                 <button
-                  onClick={onLogout}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                      setCollapsed(true);
+                    }
+                    onLogout();
+                  }}
+                  className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-gray-100"
                   title="Logout"
                 >
                   <LogOut size={16} />

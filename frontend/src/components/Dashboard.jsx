@@ -6,16 +6,33 @@ import {
 import { formatCurrency, formatDate } from '../data.js';
 
 function StatCard({ title, value, subtitle, icon: Icon, color }) {
+  const valueStr = String(value ?? '');
+  const isExtraLong = valueStr.length >= 12;
+  const isLong = valueStr.length >= 8;
+
+  const fontClass = isExtraLong
+    ? 'text-lg sm:text-xl lg:text-lg xl:text-xl 2xl:text-2xl font-extrabold'
+    : isLong
+      ? 'text-xl sm:text-2xl lg:text-xl xl:text-2xl font-extrabold'
+      : 'text-2xl sm:text-3xl font-bold';
+
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-all duration-200 shadow-sm">
-      <div className="flex items-start justify-between mb-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color} shadow-md`}>
-          <Icon size={22} className="text-white" />
+    <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 hover:shadow-md transition-all duration-200 shadow-sm min-w-0 overflow-hidden flex flex-col justify-between">
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${color} shadow-sm shrink-0`}>
+          <Icon size={20} className="text-white" />
         </div>
       </div>
-      <p className="text-3xl font-bold text-gray-800 mb-1">{value}</p>
-      <p className="text-sm text-gray-500 font-medium">{title}</p>
-      {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
+      <div className="min-w-0">
+        <p
+          className={`${fontClass} text-gray-900 tracking-tight mb-1 truncate`}
+          title={valueStr}
+        >
+          {value}
+        </p>
+        <p className="text-xs sm:text-sm text-gray-500 font-medium truncate">{title}</p>
+        {subtitle && <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5 truncate">{subtitle}</p>}
+      </div>
     </div>
   );
 }
@@ -144,10 +161,13 @@ export default function Dashboard({ bills, products, staff, currentStaff, onView
                 <div className="flex items-center justify-between sm:justify-end gap-6 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-150">
                   <div className="text-left sm:text-right shrink-0">
                     <p className="text-gray-800 font-bold text-sm">{formatCurrency(bill.totalAmount ?? bill.finalTotal)}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${bill.paymentMethod === 'Cash' ? 'bg-emerald-100 text-emerald-700' :
-                        bill.paymentMethod === 'UPI' ? 'bg-blue-100 text-blue-700' :
-                          'bg-amber-100 text-amber-700'
-                      }`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      bill.paymentMethod === 'Cash' ? 'bg-emerald-100 text-emerald-700' :
+                      bill.paymentMethod === 'UPI' ? 'bg-blue-100 text-blue-700' :
+                      bill.paymentMethod === 'Card' ? 'bg-purple-100 text-purple-700' :
+                      bill.paymentMethod === 'Split' ? 'bg-indigo-100 text-indigo-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>
                       {bill.paymentMethod}
                     </span>
                   </div>

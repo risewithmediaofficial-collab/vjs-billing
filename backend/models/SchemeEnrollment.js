@@ -6,7 +6,7 @@ const SchemeEnrollmentSchema = new mongoose.Schema(
     customerPhone: { type: String, required: true },
     customerAddress: { type: String, default: '' },
     schemeName: { type: String, required: true, default: 'VJS Gold Savings Scheme' },
-    schemeType: { type: String, enum: ['classic_11_1', 'interest_plan'], default: 'classic_11_1' },
+    schemeType: { type: String, enum: ['classic_11_1', 'classic_5_1', 'interest_plan'], default: 'classic_11_1' },
     monthlyAmount: { type: Number, required: true },
     totalMonths: { type: Number, required: true, default: 11 },
     bonusMonths: { type: Number, required: true, default: 1 },

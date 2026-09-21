@@ -5,13 +5,14 @@ import {
   Sparkles, Database
 } from 'lucide-react';
 import { formatCurrency } from '../data.js';
+import useScrollLock from '../useScrollLock.js';
 
 const CATEGORIES = ['Rings', 'Necklaces', 'Earrings', 'Bracelets', 'Bangles', 'Chains', 'Pendants', 'Anklets', 'Other'];
 
 const emptyProduct = {
   id: '', barcode: '', name: '', category: 'Rings', weight: '',
   purity: '22K', makingCharge: '', stoneCharge: '', goldRate: 7500, stock: '', image: null,
-  metalType: 'gold', isSecret: true,
+  metalType: 'gold', isSecret: true, gstPercent: 3,
 };
 
 export default function SecretInventoryPage({
@@ -35,6 +36,9 @@ export default function SecretInventoryPage({
   const [imagePreview, setImagePreview] = useState(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  // Lock screen scroll when product form modal or delete confirmation is active
+  useScrollLock(showForm || !!deleteConfirm);
 
   // Filter secret products
   const secretProducts = products.filter(p => p.isSecret === true);
@@ -70,6 +74,7 @@ export default function SecretInventoryPage({
       goldRate,
       metalType: 'gold',
       isSecret: true,
+      gstPercent: 3,
     });
     setImagePreview(null);
     setEditProduct(null);
@@ -87,7 +92,7 @@ export default function SecretInventoryPage({
 
   const openEdit = (product) => {
     const metal = (product.purity || '').toLowerCase() === 'silver' ? 'silver' : 'gold';
-    setForm({ ...product, metalType: metal, isSecret: true });
+    setForm({ ...product, metalType: metal, isSecret: true, gstPercent: product.gstPercent !== undefined ? product.gstPercent : 3 });
     setImagePreview(product.image || null);
     setEditProduct(product._id || product.id);
     setFormError('');
@@ -97,6 +102,12 @@ export default function SecretInventoryPage({
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > 1024 * 1024) {
+      setFormError(`Image exceeds 1MB limit (${(file.size / (1024 * 1024)).toFixed(2)} MB). Please select an image under 1MB.`);
+      e.target.value = '';
+      return;
+    }
+    setFormError('');
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result);
@@ -119,6 +130,7 @@ export default function SecretInventoryPage({
       stoneCharge:  parseFloat(form.stoneCharge)  || 0,
       goldRate:     parseFloat(form.goldRate)      || goldRate,
       stock:        parseInt(form.stock),
+      gstPercent:   Number(form.gstPercent !== undefined ? form.gstPercent : 3),
       storeId:      form.storeId || currentStore,
       isSecret:     true,
     };
@@ -529,6 +541,22 @@ export default function SecretInventoryPage({
                     className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-amber-500"
                   />
                 </div>
+              </div>
+
+              {/* GST Rate (%) */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">GST Rate (%)</label>
+                <select
+                  value={form.gstPercent ?? 3}
+                  onChange={(e) => setForm(f => ({ ...f, gstPercent: Number(e.target.value) }))}
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-amber-500 bg-white font-medium"
+                >
+                  <option value={3}>3% (Standard Jewellery GST)</option>
+                  <option value={0}>0% (Exempt / No GST)</option>
+                  <option value={5}>5% (Stones / Other)</option>
+                  <option value={12}>12%</option>
+                  <option value={18}>18% (Making / Artificial)</option>
+                </select>
               </div>
 
               {/* Image Upload */}

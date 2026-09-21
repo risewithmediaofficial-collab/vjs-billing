@@ -5,13 +5,63 @@ const { logActivity } = require('../utils/logger');
 
 const router = express.Router();
 
+// Calculate loan due date: exactly 1 day before the tenure mark (e.g. 1 year from 28/07/2026 is 27/07/2027)
+function calculateDueDate(issueDate, tenureMonths = 12) {
+  if (!issueDate) return null;
+  const d = new Date(issueDate);
+  if (isNaN(d.getTime())) return null;
+
+  const originalDay = d.getDate();
+  const originalHours = d.getHours();
+  const originalMinutes = d.getMinutes();
+  const originalSeconds = d.getSeconds();
+
+  d.setDate(1);
+  d.setMonth(d.getMonth() + Number(tenureMonths));
+  const lastDayOfTargetMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(originalDay, lastDayOfTargetMonth));
+  // 1 day before the full tenure/year mark
+  d.setDate(d.getDate() - 1);
+  d.setHours(originalHours, originalMinutes, originalSeconds);
+
+  return d;
+}
+
 // GET /api/loans?storeId=store-1
 router.get('/', auth, async (req, res) => {
   try {
     const filter = {};
     if (req.query.storeId) filter.storeId = req.query.storeId;
     const loans = await Loan.find(filter).sort({ createdAt: -1 });
-    res.json(loans);
+
+    // Ensure all loans have correct dueDate (- 1 day rule) and backfill legacy loans
+    const updatedLoans = await Promise.all(loans.map(async (loan) => {
+      const tenure = Number(loan.tenureMonths || 12);
+      let needsUpdate = false;
+
+      if (!loan.dueDate && loan.issueDate) {
+        loan.dueDate = calculateDueDate(loan.issueDate, tenure);
+        needsUpdate = true;
+      } else if (loan.dueDate && loan.issueDate) {
+        const d = new Date(loan.dueDate);
+        const issue = new Date(loan.issueDate);
+        if (!isNaN(d.getTime()) && !isNaN(issue.getTime()) && d.getDate() === issue.getDate()) {
+          loan.dueDate = calculateDueDate(loan.issueDate, tenure);
+          needsUpdate = true;
+        }
+      }
+
+      if (needsUpdate) {
+        try {
+          await Loan.updateOne({ _id: loan._id }, { dueDate: loan.dueDate });
+        } catch (e) {
+          console.error('Failed to auto-update loan dueDate:', e);
+        }
+      }
+      return loan;
+    }));
+
+    res.json(updatedLoans);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch loans.' });
   }
@@ -22,6 +72,29 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const loan = await Loan.findById(req.params.id);
     if (!loan) return res.status(404).json({ message: 'Loan not found.' });
+
+    const tenure = Number(loan.tenureMonths || 12);
+    let needsUpdate = false;
+    if (!loan.dueDate && loan.issueDate) {
+      loan.dueDate = calculateDueDate(loan.issueDate, tenure);
+      needsUpdate = true;
+    } else if (loan.dueDate && loan.issueDate) {
+      const d = new Date(loan.dueDate);
+      const issue = new Date(loan.issueDate);
+      if (!isNaN(d.getTime()) && !isNaN(issue.getTime()) && d.getDate() === issue.getDate()) {
+        loan.dueDate = calculateDueDate(loan.issueDate, tenure);
+        needsUpdate = true;
+      }
+    }
+
+    if (needsUpdate) {
+      try {
+        await Loan.updateOne({ _id: loan._id }, { dueDate: loan.dueDate });
+      } catch (e) {
+        console.error('Failed to auto-update loan dueDate:', e);
+      }
+    }
+
     res.json(loan);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch loan.' });
@@ -33,11 +106,9 @@ router.post('/', auth, async (req, res) => {
   try {
     const issueDate = req.body.issueDate ? new Date(req.body.issueDate) : new Date();
     const tenureMonths = req.body.tenureMonths ? Number(req.body.tenureMonths) : 12;
-    let dueDate = req.body.dueDate;
-    if (!dueDate) {
-      const d = new Date(issueDate);
-      d.setMonth(d.getMonth() + tenureMonths);
-      dueDate = d;
+    let dueDate = req.body.dueDate ? new Date(req.body.dueDate) : null;
+    if (!dueDate || isNaN(dueDate.getTime()) || (dueDate.getDate() === issueDate.getDate())) {
+      dueDate = calculateDueDate(issueDate, tenureMonths);
     }
 
     const loan = new Loan({

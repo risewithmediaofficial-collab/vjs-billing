@@ -32,13 +32,14 @@ router.get('/:id', auth, async (req, res) => {
 // POST /api/bills — create new bill and deduct stock
 router.post('/', auth, async (req, res) => {
   try {
-    // ── Generate a guaranteed-unique invoice number server-side ──────────────
+    // ── Generate a guaranteed-unique invoice/quotation number server-side ──
+    const isQuotation = req.body.billType === 'quotation' || req.body.isRoughBill === true;
     const year = new Date().getFullYear();
-    const prefix = `INV-${year}-`;
+    const prefix = isQuotation ? `EST-${year}-` : `INV-${year}-`;
 
     // Find the highest existing sequence number this year across ALL stores
     const lastBill = await Bill.findOne(
-      { invoiceNumber: { $regex: `^INV-${year}-` } },
+      { invoiceNumber: { $regex: `^${prefix}` } },
       { invoiceNumber: 1 },
       { sort: { invoiceNumber: -1 } }
     );
@@ -55,27 +56,32 @@ router.post('/', auth, async (req, res) => {
     const bill = new Bill({
       ...req.body,
       invoiceNumber,          // always use server-generated number
+      isRoughBill: isQuotation,
+      billType: isQuotation ? 'quotation' : (req.body.billType || 'tax_invoice'),
       staffId: req.user.id,
       staffName: req.user.name,
     });
     await bill.save();
 
-    // Deduct stock for each item that has a productId
-    const stockOps = (req.body.items || [])
-      .filter(item => item.productId || item.id)
-      .map(item => ({
-        updateOne: {
-          filter: { _id: item.productId || item.id },
-          update: { $inc: { stock: -(item.quantity || 1) } },
-        },
-      }));
+    // Deduct stock for each item that has a productId ONLY for tax invoices, NOT for rough bills / quotations
+    if (!isQuotation) {
+      const stockOps = (req.body.items || [])
+        .filter(item => item.productId || item.id)
+        .map(item => ({
+          updateOne: {
+            filter: { _id: item.productId || item.id },
+            update: { $inc: { stock: -(item.quantity || 1) } },
+          },
+        }));
 
-    if (stockOps.length > 0) {
-      await Product.bulkWrite(stockOps);
+      if (stockOps.length > 0) {
+        await Product.bulkWrite(stockOps);
+      }
     }
 
     // Log Activity
-    await logActivity(req, 'Generate Bill', `Generated invoice ${bill.invoiceNumber} for ${bill.customer?.name || 'Walk-in Customer'} (Amount: ₹${(bill.totalAmount ?? bill.finalTotal ?? 0).toLocaleString('en-IN')})`);
+    const actionName = isQuotation ? 'Generate Quotation' : 'Generate Bill';
+    await logActivity(req, actionName, `Generated ${isQuotation ? 'quotation' : 'invoice'} ${bill.invoiceNumber} for ${bill.customer?.name || 'Walk-in Customer'} (Amount: ₹${(bill.totalAmount ?? bill.finalTotal ?? 0).toLocaleString('en-IN')})`);
 
     res.status(201).json(bill);
   } catch (err) {

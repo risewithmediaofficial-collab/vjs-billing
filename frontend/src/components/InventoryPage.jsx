@@ -4,13 +4,14 @@ import {
   AlertTriangle, CheckCircle2, Barcode, Lock, Image as ImageIcon, Loader2,
 } from 'lucide-react';
 import { formatCurrency, calculateBillAmounts, STORES } from '../data.js';
+import useScrollLock from '../useScrollLock.js';
 
 const CATEGORIES = ['Rings', 'Necklaces', 'Earrings', 'Bracelets', 'Bangles', 'Chains', 'Pendants', 'Anklets', 'Other'];
 
 const emptyProduct = {
   id: '', barcode: '', name: '', category: 'Rings', weight: '',
   purity: '22K', makingCharge: '', stoneCharge: '', goldRate: 7500, stock: '', image: null,
-  metalType: 'gold',
+  metalType: 'gold', gstPercent: 3,
 };
 
 function formatShortDate(dateStr) {
@@ -28,8 +29,10 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
   const [imagePreview, setImagePreview] = useState(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // product id pending delete
-
   const isAdminOrManager = currentStaff?.role === 'Admin' || currentStaff?.role === 'Manager';
+
+  // Lock screen scroll when product modal form or delete confirmation is active
+  useScrollLock(showForm || !!deleteConfirm);
 
 
   const filtered = products.filter(p => {
@@ -41,7 +44,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
 
   const openAdd = () => {
     const nextNum = String(products.length + 1).padStart(3, '0');
-    setForm({ ...emptyProduct, id: `PRD-${nextNum}`, barcode: `HUID-${nextNum}`, storeId: currentStore, goldRate, metalType: 'gold' });
+    setForm({ ...emptyProduct, id: `PRD-${nextNum}`, barcode: `HUID-${nextNum}`, storeId: currentStore, goldRate, metalType: 'gold', gstPercent: 3 });
     setImagePreview(null);
     setEditProduct(null);
     setFormError('');
@@ -58,7 +61,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
 
   const openEdit = (product) => {
     const metal = (product.purity || '').toLowerCase() === 'silver' ? 'silver' : 'gold';
-    setForm({ ...product, metalType: metal });
+    setForm({ ...product, metalType: metal, gstPercent: product.gstPercent !== undefined ? product.gstPercent : 3 });
     setImagePreview(product.image || null);
     setEditProduct(product._id || product.id);
     setFormError('');
@@ -68,6 +71,12 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > 1024 * 1024) {
+      setFormError(`Image exceeds 1MB limit (${(file.size / (1024 * 1024)).toFixed(2)} MB). Please select an image under 1MB.`);
+      e.target.value = '';
+      return;
+    }
+    setFormError('');
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result);
@@ -90,6 +99,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
       stoneCharge:  parseFloat(form.stoneCharge)  || 0,
       goldRate:     parseFloat(form.goldRate)      || goldRate,
       stock:        parseInt(form.stock),
+      gstPercent:   Number(form.gstPercent !== undefined ? form.gstPercent : 3),
       storeId:      form.storeId || currentStore,
     };
     try {
@@ -307,9 +317,20 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
                         </span>
                       </td>
 
-                      {/* Category */}
+                      {/* Category & GST */}
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-gray-700 text-sm">{product.category}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-gray-700 text-sm">{product.category}</span>
+                          {product.gstPercent !== undefined && product.gstPercent !== 3 && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                              product.gstPercent === 0
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-purple-50 text-purple-700 border-purple-200'
+                            }`}>
+                              {product.gstPercent}% GST
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Metal */}
@@ -684,6 +705,22 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
                   />
                 </div>
               ))}
+
+              {/* GST Rate (%) */}
+              <div className="col-span-2">
+                <label className="text-xs text-gray-500 font-semibold mb-1.5 block uppercase tracking-wider">GST Rate (%)</label>
+                <select
+                  value={form.gstPercent ?? 3}
+                  onChange={e => setForm(p => ({ ...p, gstPercent: Number(e.target.value) }))}
+                  className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-gray-800 text-sm focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 font-medium"
+                >
+                  <option value={3}>3% (Standard Jewellery GST)</option>
+                  <option value={0}>0% (Exempt / No GST)</option>
+                  <option value={5}>5% (Stones / Other)</option>
+                  <option value={12}>12%</option>
+                  <option value={18}>18% (Making / Artificial)</option>
+                </select>
+              </div>
 
               {isAdminOrManager && (
                 <div className="col-span-2">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Plus, Trash2, X, Save, CheckCircle2, ShieldCheck, Lock, KeyRound, Loader2 } from 'lucide-react';
 import { STORES, formatCurrency } from '../data.js';
 import { staffApi } from '../api.js';
+import useScrollLock from '../useScrollLock.js';
 
 const ROLES = ['Staff', 'Senior Staff', 'Manager', 'Admin'];
 const emptyForm = { name: '', role: 'Staff', pin: '', storeId: STORES[0].id };
@@ -29,17 +30,8 @@ export default function StaffPage({ staff, onCreateStaff, onDeleteStaff, onUpdat
   const [securityError, setSecurityError] = useState('');
   const [securitySuccess, setSecuritySuccess] = useState('');
 
-  // Lock body scroll when popup modals are active
-  useEffect(() => {
-    if (showForm || showSecurityModal || deleteConfirm) {
-      document.body.classList.add('overflow-hidden');
-    } else {
-      document.body.classList.remove('overflow-hidden');
-    }
-    return () => {
-      document.body.classList.remove('overflow-hidden');
-    };
-  }, [showForm, showSecurityModal, deleteConfirm]);
+  // Lock screen scroll when popup modals are active
+  useScrollLock(showForm || showSecurityModal || !!deleteConfirm);
 
   const handleRevealPinSubmit = async () => {
     setSecurityError('');
