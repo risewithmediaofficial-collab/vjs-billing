@@ -30,7 +30,7 @@ const emptyExchangeForm = {
   notes: '',
 };
 
-export default function BillingPage({
+function BillingPage({
   products,
   bills,
   currentStaff,
@@ -46,7 +46,6 @@ export default function BillingPage({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('name');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [filteredProducts, setFilteredProducts] = useState([]);
   const [cartItems, setCartItems] = useState([]);
   const billItems = cartItems;
   const setBillItems = setCartItems;
@@ -69,7 +68,7 @@ export default function BillingPage({
   const isCustomerDetailsExpanded = showCustomerDetails || fieldErrors.name || fieldErrors.mobile;
   const [toastMessage, setToastMessage] = useState('');
   const [localPreviewBill, setLocalPreviewBill] = useState(null);
-  const [barcodeBuffer, setBarcodeBuffer] = useState('');
+  const barcodeBufferRef = useRef('');
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');        // API / server errors
   const [formError, setFormError] = useState(''); // validation errors
@@ -330,7 +329,7 @@ export default function BillingPage({
     }
   };
 
-  useEffect(() => {
+  const filteredProducts = useMemo(() => {
     let results = products;
     if (selectedCategory !== 'All') {
       results = results.filter(p => p.category === selectedCategory);
@@ -346,7 +345,7 @@ export default function BillingPage({
         return false;
       });
     }
-    setFilteredProducts(results);
+    return results;
   }, [searchQuery, searchType, selectedCategory, products]);
 
   const addToBill = (product) => {
@@ -727,30 +726,44 @@ export default function BillingPage({
     }
   };
 
+  const billingStateRef = useRef({});
+  billingStateRef.current = {
+    products,
+    mobileTab,
+    customer,
+    showAddProduct,
+    localPreviewBill,
+    searchQuery,
+    handleGenerate,
+    openAddProduct,
+    addToBill,
+  };
+
   // ── Keyboard Shortcuts for Billing Page ───────────────────────────────────
   useEffect(() => {
     const handleKey = (e) => {
       const activeEl = document.activeElement;
       const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl?.tagName);
+      const state = billingStateRef.current;
 
       // 1. Ctrl + Enter: Generate Bill or Save & Update Edited Invoice
       if (e.ctrlKey && e.key === 'Enter') {
         e.preventDefault();
-        handleGenerate();
+        state.handleGenerate?.();
         return;
       }
 
       // 2. F9: POS standard alternative for Bill Generation
       if (e.key === 'F9') {
         e.preventDefault();
-        handleGenerate();
+        state.handleGenerate?.();
         return;
       }
 
       // 3. Alt + S or '/' (when not typing in an input): Focus Product Search
       if ((e.altKey && (e.key === 's' || e.key === 'S')) || (!isInput && e.key === '/')) {
         e.preventDefault();
-        if (mobileTab !== 'products') setMobileTab('products');
+        if (state.mobileTab !== 'products') setMobileTab('products');
         searchRef.current?.focus();
         searchRef.current?.select();
         return;
@@ -759,10 +772,10 @@ export default function BillingPage({
       // 4. Alt + C: Focus Customer Details (Name or Mobile)
       if (e.altKey && (e.key === 'c' || e.key === 'C')) {
         e.preventDefault();
-        if (mobileTab !== 'bill') setMobileTab('bill');
+        if (state.mobileTab !== 'bill') setMobileTab('bill');
         setShowCustomerDetails(true);
         setTimeout(() => {
-          if (!customer.name.trim()) {
+          if (!state.customer?.name?.trim()) {
             customerNameRef.current?.focus();
           } else {
             customerMobileRef.current?.focus();
@@ -774,14 +787,14 @@ export default function BillingPage({
       // 5. Alt + N: Quick Add New Product Modal
       if (e.altKey && (e.key === 'n' || e.key === 'N')) {
         e.preventDefault();
-        openAddProduct();
+        state.openAddProduct?.();
         return;
       }
 
       // 6. Alt + K or Alt + O: Toggle Old Metal Exchange
       if (e.altKey && (e.key === 'k' || e.key === 'K' || e.key === 'o' || e.key === 'O')) {
         e.preventDefault();
-        if (mobileTab !== 'bill') setMobileTab('bill');
+        if (state.mobileTab !== 'bill') setMobileTab('bill');
         setExchangeEnabled(prev => !prev);
         return;
       }
@@ -812,17 +825,17 @@ export default function BillingPage({
 
       // 8. Escape: Context-aware dismiss / cancel
       if (e.key === 'Escape') {
-        if (showAddProduct) {
+        if (state.showAddProduct) {
           e.preventDefault();
           setShowAddProduct(false);
           return;
         }
-        if (localPreviewBill) {
+        if (state.localPreviewBill) {
           e.preventDefault();
           setLocalPreviewBill(null);
           return;
         }
-        if (searchQuery) {
+        if (state.searchQuery) {
           e.preventDefault();
           setSearchQuery('');
           searchRef.current?.blur();
@@ -832,23 +845,26 @@ export default function BillingPage({
 
       // 9. Barcode Scanner rapid buffer support (when not typing in an input)
       if (!isInput) {
-        if (e.key === 'Enter' && barcodeBuffer.length > 3) {
-          const found = products.find(p => p.barcode === barcodeBuffer || p.id === barcodeBuffer);
-          if (found) addToCart(found);
-          setBarcodeBuffer('');
+        if (e.key === 'Enter' && barcodeBufferRef.current.length > 3) {
+          const buf = barcodeBufferRef.current;
+          const found = state.products?.find(p => p.barcode === buf || p.id === buf || (p._id && p._id.toString() === buf));
+          if (found) state.addToBill?.(found);
+          barcodeBufferRef.current = '';
           return;
         }
-        if (e.key.length === 1 && !e.ctrlKey && !e.altKey) {
+        if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
           clearTimeout(barcodeTimer.current);
-          setBarcodeBuffer(prev => prev + e.key);
-          barcodeTimer.current = setTimeout(() => setBarcodeBuffer(''), 300);
+          barcodeBufferRef.current += e.key;
+          barcodeTimer.current = setTimeout(() => {
+            barcodeBufferRef.current = '';
+          }, 300);
         }
       }
     };
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [barcodeBuffer, products, mobileTab, customer, showAddProduct, localPreviewBill, searchQuery, handleGenerate]);
+  }, []);
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 animate-fade-in relative w-full max-w-full min-w-0">
@@ -2254,3 +2270,5 @@ export default function BillingPage({
     </div>
   );
 }
+
+export default React.memo(BillingPage);

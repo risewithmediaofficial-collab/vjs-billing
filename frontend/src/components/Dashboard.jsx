@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   TrendingUp, ShoppingBag, Package, IndianRupee,
   Clock, Users, Gem, BarChart3, Lock, ShoppingCart, Eye
@@ -17,7 +17,7 @@ function StatCard({ title, value, subtitle, icon: Icon, color }) {
       : 'text-2xl sm:text-3xl font-bold';
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 hover:shadow-md transition-all duration-200 shadow-sm min-w-0 overflow-hidden flex flex-col justify-between">
+    <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 hover:shadow-md transition-shadow duration-200 shadow-sm min-w-0 overflow-hidden flex flex-col justify-between">
       <div className="flex items-start justify-between mb-3">
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${color} shadow-sm shrink-0`}>
           <Icon size={20} className="text-white" />
@@ -37,30 +37,42 @@ function StatCard({ title, value, subtitle, icon: Icon, color }) {
   );
 }
 
-export default function Dashboard({ bills, products, staff, currentStaff, onViewBill, activityLogs = [], onRefreshData }) {
+function Dashboard({ bills, products, staff, currentStaff, onViewBill, activityLogs = [], onRefreshData }) {
   const isAdmin = currentStaff?.role === 'Admin';
-  const isQuotationBill = b => b.isRoughBill || b.billType === 'quotation' || b.invoiceNumber?.startsWith('EST-');
-  const activeTaxBills = bills.filter(b => !isQuotationBill(b) && b.status !== 'refunded' && b.status !== 'exchanged');
-  const today = new Date().toDateString();
-  const todayBills = activeTaxBills.filter(b => new Date(b.createdAt).toDateString() === today);
-  const todayRevenue = todayBills.reduce((sum, b) => sum + (b.totalAmount ?? b.finalTotal ?? 0), 0);
-  const totalRevenue = activeTaxBills.reduce((sum, b) => sum + (b.totalAmount ?? b.finalTotal ?? 0), 0);
-  const lowStock = products.filter(p => p.stock <= 2);
-  const recentBills = [...bills].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
 
-  // ── Top Categories for TODAY only ───────────────────────────────────────
-  const todayCategoryMap = {};
-  todayBills.forEach(bill => {
-    (bill.items || []).forEach(item => {
-      const cat = item.category || 'Other';
-      if (!todayCategoryMap[cat]) todayCategoryMap[cat] = { qty: 0, revenue: 0 };
-      todayCategoryMap[cat].qty += item.quantity || 1;
-      todayCategoryMap[cat].revenue += item.finalTotal ?? 0;
+  const { todayBills, todayRevenue, totalRevenue, lowStock, recentBills, topCategories } = useMemo(() => {
+    const isQuotationBill = b => b.isRoughBill || b.billType === 'quotation' || b.invoiceNumber?.startsWith('EST-');
+    const activeTaxBills = bills.filter(b => !isQuotationBill(b) && b.status !== 'refunded' && b.status !== 'exchanged');
+    const today = new Date().toDateString();
+    const todayB = activeTaxBills.filter(b => new Date(b.createdAt).toDateString() === today);
+    const todayRev = todayB.reduce((sum, b) => sum + (b.totalAmount ?? b.finalTotal ?? 0), 0);
+    const totalRev = activeTaxBills.reduce((sum, b) => sum + (b.totalAmount ?? b.finalTotal ?? 0), 0);
+    const low = products.filter(p => p.stock <= 2);
+    const recent = [...bills].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
+
+    // ── Top Categories for TODAY only ───────────────────────────────────────
+    const todayCategoryMap = {};
+    todayB.forEach(bill => {
+      (bill.items || []).forEach(item => {
+        const cat = item.category || 'Other';
+        if (!todayCategoryMap[cat]) todayCategoryMap[cat] = { qty: 0, revenue: 0 };
+        todayCategoryMap[cat].qty += item.quantity || 1;
+        todayCategoryMap[cat].revenue += item.finalTotal ?? 0;
+      });
     });
-  });
-  const topCategories = Object.entries(todayCategoryMap)
-    .sort((a, b) => b[1].qty - a[1].qty)   // sort by qty sold (highest first)
-    .slice(0, 5);
+    const topCats = Object.entries(todayCategoryMap)
+      .sort((a, b) => b[1].qty - a[1].qty)   // sort by qty sold (highest first)
+      .slice(0, 5);
+
+    return {
+      todayBills: todayB,
+      todayRevenue: todayRev,
+      totalRevenue: totalRev,
+      lowStock: low,
+      recentBills: recent,
+      topCategories: topCats,
+    };
+  }, [bills, products]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -176,7 +188,7 @@ export default function Dashboard({ bills, products, staff, currentStaff, onView
                   {onViewBill && (
                     <button
                       onClick={() => onViewBill(bill)}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-gray-300 text-amber-600 hover:text-amber-700 hover:bg-amber-50 hover:border-amber-400 font-semibold text-xs transition-all shadow-sm"
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-gray-300 text-amber-600 hover:text-amber-700 hover:bg-amber-50 hover:border-amber-400 font-semibold text-xs transition-colors shadow-sm"
                       title="View bill details"
                     >
                       <Eye size={13} />
@@ -192,3 +204,5 @@ export default function Dashboard({ bills, products, staff, currentStaff, onView
     </div>
   );
 }
+
+export default React.memo(Dashboard);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import './index.css';
 import { STORES } from './data.js';
 import { ToastProvider, useToast } from './ToastContext.jsx';
@@ -13,14 +13,17 @@ import Dashboard from './components/Dashboard.jsx';
 import BillingPage from './components/BillingPage.jsx';
 import InvoicesPage from './components/InvoicesPage.jsx';
 import InventoryPage from './components/InventoryPage.jsx';
-import SecretInventoryPage from './components/SecretInventoryPage.jsx';
-import StaffPage from './components/StaffPage.jsx';
-import SettingsPage from './components/SettingsPage.jsx';
 import BillPreview from './components/BillPreview.jsx';
-import LoansPage from './components/LoansPage.jsx';
-import SchemesPage from './components/SchemesPage.jsx';
-import AuditTrailPage from './components/AuditTrailPage.jsx';
-import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.jsx';
+
+// ── Lazy-loaded secondary pages (Code Splitting for instant tab switching) ──
+const SecretInventoryPage = lazy(() => import('./components/SecretInventoryPage.jsx'));
+const StaffPage = lazy(() => import('./components/StaffPage.jsx'));
+const SettingsPage = lazy(() => import('./components/SettingsPage.jsx'));
+const LoansPage = lazy(() => import('./components/LoansPage.jsx'));
+const SchemesPage = lazy(() => import('./components/SchemesPage.jsx'));
+const AuditTrailPage = lazy(() => import('./components/AuditTrailPage.jsx'));
+const KeyboardShortcutsModal = lazy(() => import('./components/KeyboardShortcutsModal.jsx'));
+
 import useScrollLock, { getScrollLockCount } from './useScrollLock.js';
 
 // ── Inner app wrapped by ToastProvider ────────────────────────────────────────
@@ -573,10 +576,10 @@ function AppInner() {
   }
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const storeProducts = products.filter(p => p.storeId === currentStore);
-  const storeBills    = bills.filter(b => b.storeId === currentStore);
-  const storeLoans    = loans.filter(l => l.storeId === currentStore);
-  const storeSchemes  = schemes.filter(s => s.storeId === currentStore);
+  const storeProducts = useMemo(() => products.filter(p => p.storeId === currentStore), [products, currentStore]);
+  const storeBills    = useMemo(() => bills.filter(b => b.storeId === currentStore), [bills, currentStore]);
+  const storeLoans    = useMemo(() => loans.filter(l => l.storeId === currentStore), [loans, currentStore]);
+  const storeSchemes  = useMemo(() => schemes.filter(s => s.storeId === currentStore), [schemes, currentStore]);
   const canSwitchStore = currentStaff.role === 'Admin';
   const sidebarWidth   = sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64';
 
@@ -592,7 +595,7 @@ function AppInner() {
         onHover={setIsSidebarHovered}
       />
 
-      <main className={`transition-all duration-300 ${sidebarWidth} min-h-screen w-full max-w-full overflow-x-hidden min-w-0`}>
+      <main className={`transition-[padding-left] duration-200 ease-out ${sidebarWidth} min-h-screen w-full max-w-full overflow-x-hidden min-w-0`}>
         {/* Top bar */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-3 sm:px-6 py-2.5 sm:py-3 shadow-xs">
           <div className="flex items-center justify-between gap-2">
@@ -693,114 +696,121 @@ function AppInner() {
 
         {/* Page Content */}
         <div className="p-3 sm:p-4 lg:p-5 max-w-full min-w-0">
-          {activeTab === 'dashboard' && (
-            <Dashboard
-              bills={storeBills}
-              products={storeProducts.filter(p => !p.isSecret)}
-              staff={staff}
-              currentStaff={currentStaff}
-              onViewBill={setPreviewBill}
-              activityLogs={activityLogs}
-              onRefreshData={() => loadData(currentStore)}
-            />
-          )}
-          {activeTab === 'billing' && (
-            <BillingPage
-              products={storeProducts.filter(p => !p.isSecret)}
-              bills={storeBills}
-              currentStaff={currentStaff}
-              onGenerateBill={handleGenerateBill}
-              onAddProduct={handleCreateProduct}
-              currentStore={currentStore}
-              goldRate={goldRate}
-              silverRate={silverRate}
-              editingBill={editingBill}
-              onCancelEdit={() => setEditingBill(null)}
-              onUpdateBill={handleUpdateBill}
-            />
-          )}
-          {activeTab === 'invoices' && (
-            <InvoicesPage
-              bills={storeBills}
-              onProcessBillAction={handleProcessBillAction}
-              onEditBill={handleStartEditBill}
-              currentStaff={currentStaff}
-            />
-          )}
-          {activeTab === 'loans' && (
-            <LoansPage
-              loans={storeLoans}
-              onSaveLoan={handleSaveLoan}
-              onUpdateLoan={handleUpdateLoan}
-              currentStaff={currentStaff}
-              currentStore={currentStore}
-            />
-          )}
-          {activeTab === 'schemes' && (
-            <SchemesPage
-              schemes={storeSchemes}
-              onEnrollScheme={handleEnrollScheme}
-              onPayScheme={handlePayScheme}
-              onRedeemScheme={handleRedeemScheme}
-              onCancelScheme={handleCancelScheme}
-              currentStore={currentStore}
-              goldRate={goldRate}
-              silverRate={silverRate}
-              currentStaff={currentStaff}
-            />
-          )}
-          {activeTab === 'inventory' && (
-            <InventoryPage
-              products={products.filter(p => !p.isSecret)}
-              onCreateProduct={handleCreateProduct}
-              onUpdateProduct={handleUpdateProduct}
-              onDeleteProduct={handleDeleteProduct}
-              currentStore={currentStore}
-              currentStaff={currentStaff}
-              goldRate={goldRate}
-              silverRate={silverRate}
-            />
-          )}
-          {activeTab === 'secret-inventory' && (
-            <SecretInventoryPage
-              products={products}
-              onCreateProduct={handleCreateProduct}
-              onUpdateProduct={handleUpdateProduct}
-              onDeleteProduct={handleDeleteProduct}
-              currentStore={currentStore}
-              currentStaff={currentStaff}
-              goldRate={goldRate}
-              silverRate={silverRate}
-              onLockVault={handleLockSecretVault}
-            />
-          )}
-          {activeTab === 'audit-trail' && (
-            <AuditTrailPage
-              activityLogs={activityLogs}
-              currentStaff={currentStaff}
-              staff={staff}
-              onRefreshData={() => loadData(currentStore)}
-            />
-          )}
-          {activeTab === 'staff' && (
-            <StaffPage
-              staff={staff}
-              onCreateStaff={handleCreateStaff}
-              onDeleteStaff={handleDeleteStaff}
-              onUpdateStaff={handleUpdateStaff}
-              currentStaff={currentStaff}
-              bills={storeBills}
-              products={storeProducts}
-            />
-          )}
-          {activeTab === 'settings' && (
-            <SettingsPage
-              goldRate={goldRate}
-              onUpdateGoldRate={handleUpdateGoldRate}
-              silverRate={silverRate}
-              onUpdateSilverRate={handleUpdateSilverRate}
-            />
-          )}
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-3">
+              <Loader2 size={32} className="animate-spin text-amber-500" />
+              <p className="text-xs font-semibold text-gray-500">Loading view...</p>
+            </div>
+          }>
+            {activeTab === 'dashboard' && (
+              <Dashboard
+                bills={storeBills}
+                products={storeProducts.filter(p => !p.isSecret)}
+                staff={staff}
+                currentStaff={currentStaff}
+                onViewBill={setPreviewBill}
+                activityLogs={activityLogs}
+                onRefreshData={() => loadData(currentStore)}
+              />
+            )}
+            {activeTab === 'billing' && (
+              <BillingPage
+                products={storeProducts.filter(p => !p.isSecret)}
+                bills={storeBills}
+                currentStaff={currentStaff}
+                onGenerateBill={handleGenerateBill}
+                onAddProduct={handleCreateProduct}
+                currentStore={currentStore}
+                goldRate={goldRate}
+                silverRate={silverRate}
+                editingBill={editingBill}
+                onCancelEdit={() => setEditingBill(null)}
+                onUpdateBill={handleUpdateBill}
+              />
+            )}
+            {activeTab === 'invoices' && (
+              <InvoicesPage
+                bills={storeBills}
+                onProcessBillAction={handleProcessBillAction}
+                onEditBill={handleStartEditBill}
+                currentStaff={currentStaff}
+              />
+            )}
+            {activeTab === 'loans' && (
+              <LoansPage
+                loans={storeLoans}
+                onSaveLoan={handleSaveLoan}
+                onUpdateLoan={handleUpdateLoan}
+                currentStaff={currentStaff}
+                currentStore={currentStore}
+              />
+            )}
+            {activeTab === 'schemes' && (
+              <SchemesPage
+                schemes={storeSchemes}
+                onEnrollScheme={handleEnrollScheme}
+                onPayScheme={handlePayScheme}
+                onRedeemScheme={handleRedeemScheme}
+                onCancelScheme={handleCancelScheme}
+                currentStore={currentStore}
+                goldRate={goldRate}
+                silverRate={silverRate}
+                currentStaff={currentStaff}
+              />
+            )}
+            {activeTab === 'inventory' && (
+              <InventoryPage
+                products={products.filter(p => !p.isSecret)}
+                onCreateProduct={handleCreateProduct}
+                onUpdateProduct={handleUpdateProduct}
+                onDeleteProduct={handleDeleteProduct}
+                currentStore={currentStore}
+                currentStaff={currentStaff}
+                goldRate={goldRate}
+                silverRate={silverRate}
+              />
+            )}
+            {activeTab === 'secret-inventory' && (
+              <SecretInventoryPage
+                products={products}
+                onCreateProduct={handleCreateProduct}
+                onUpdateProduct={handleUpdateProduct}
+                onDeleteProduct={handleDeleteProduct}
+                currentStore={currentStore}
+                currentStaff={currentStaff}
+                goldRate={goldRate}
+                silverRate={silverRate}
+                onLockVault={handleLockSecretVault}
+              />
+            )}
+            {activeTab === 'audit-trail' && (
+              <AuditTrailPage
+                activityLogs={activityLogs}
+                currentStaff={currentStaff}
+                staff={staff}
+                onRefreshData={() => loadData(currentStore)}
+              />
+            )}
+            {activeTab === 'staff' && (
+              <StaffPage
+                staff={staff}
+                onCreateStaff={handleCreateStaff}
+                onDeleteStaff={handleDeleteStaff}
+                onUpdateStaff={handleUpdateStaff}
+                currentStaff={currentStaff}
+                bills={storeBills}
+                products={storeProducts}
+              />
+            )}
+            {activeTab === 'settings' && (
+              <SettingsPage
+                goldRate={goldRate}
+                onUpdateGoldRate={handleUpdateGoldRate}
+                silverRate={silverRate}
+                onUpdateSilverRate={handleUpdateSilverRate}
+              />
+            )}
+          </Suspense>
         </div>
       </main>
 

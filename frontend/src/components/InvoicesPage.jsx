@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Search, FileText, Eye, Printer, Download, MessageCircle,
   Calendar, Filter, ChevronDown, X, RotateCcw, RefreshCw, Lock,
@@ -8,7 +8,7 @@ import { formatCurrency, formatDate } from '../data.js';
 import BillPreview from './BillPreview.jsx';
 import useScrollLock from '../useScrollLock.js';
 
-export default function InvoicesPage({ bills, onProcessBillAction, onEditBill, currentStaff }) {
+function InvoicesPage({ bills, onProcessBillAction, onEditBill, currentStaff }) {
   const [search, setSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'tax_invoice' | 'quotation' | 'refunded' | 'exchanged'
@@ -28,11 +28,31 @@ export default function InvoicesPage({ bills, onProcessBillAction, onEditBill, c
   // Lock background screen scroll when Refund/Exchange modal or Bill Preview is open
   useScrollLock(actionModal.isOpen || !!selectedBill);
 
+  const closeActionModal = () => {
+    setActionModal({
+      isOpen: false,
+      bill: null,
+      action: 'refund',
+      reason: '',
+      loading: false,
+      error: '',
+    });
+  };
+
+  const invoicesStateRef = useRef({});
+  invoicesStateRef.current = {
+    actionModal,
+    selectedBill,
+    search,
+    closeActionModal,
+  };
+
   // ── Keyboard Shortcuts for Invoices Page ──────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e) => {
       const activeEl = document.activeElement;
       const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl?.tagName);
+      const state = invoicesStateRef.current;
 
       // 1. Alt + S or /: Focus search box
       if ((e.altKey && (e.key === 's' || e.key === 'S')) || (!isInput && e.key === '/')) {
@@ -44,17 +64,17 @@ export default function InvoicesPage({ bills, onProcessBillAction, onEditBill, c
 
       // 2. Escape: Close modal or clear search
       if (e.key === 'Escape') {
-        if (actionModal.isOpen) {
+        if (state.actionModal.isOpen) {
           e.preventDefault();
-          closeActionModal();
+          state.closeActionModal();
           return;
         }
-        if (selectedBill) {
+        if (state.selectedBill) {
           e.preventDefault();
           setSelectedBill(null);
           return;
         }
-        if (search) {
+        if (state.search) {
           e.preventDefault();
           setSearch('');
           searchRef.current?.blur();
@@ -65,7 +85,7 @@ export default function InvoicesPage({ bills, onProcessBillAction, onEditBill, c
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [actionModal.isOpen, selectedBill, search]);
+  }, []);
 
   const openActionModal = (bill, action) => {
     setActionModal({
@@ -73,17 +93,6 @@ export default function InvoicesPage({ bills, onProcessBillAction, onEditBill, c
       bill,
       action,
       reason: action === 'refund' ? 'Customer return (within 3 days)' : 'Exchange for other jewellery',
-      loading: false,
-      error: '',
-    });
-  };
-
-  const closeActionModal = () => {
-    setActionModal({
-      isOpen: false,
-      bill: null,
-      action: 'refund',
-      reason: '',
       loading: false,
       error: '',
     });
@@ -109,44 +118,47 @@ export default function InvoicesPage({ bills, onProcessBillAction, onEditBill, c
     }
   };
 
-  const filterDate = bill => {
-    const d = new Date(bill.createdAt);
-    const now = new Date();
-    if (dateFilter === 'today') return d.toDateString() === now.toDateString();
-    if (dateFilter === 'week') return (now - d) < 7 * 24 * 60 * 60 * 1000;
-    if (dateFilter === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    return true;
-  };
-
   const isQuotationBill = b => b.isRoughBill || b.billType === 'quotation' || b.invoiceNumber?.startsWith('EST-');
 
-  const filtered = bills
-    .filter(filterDate)
-    .filter(b => {
-      const isQuote = isQuotationBill(b);
-      if (typeFilter === 'tax_invoice') return !isQuote && b.status !== 'refunded' && b.status !== 'exchanged';
-      if (typeFilter === 'quotation') return isQuote && b.status !== 'refunded' && b.status !== 'exchanged';
-      if (typeFilter === 'refunded') return b.status === 'refunded';
-      if (typeFilter === 'exchanged') return b.status === 'exchanged';
+  const { filtered, totalRevenue } = useMemo(() => {
+    const filterDate = bill => {
+      const d = new Date(bill.createdAt);
+      const now = new Date();
+      if (dateFilter === 'today') return d.toDateString() === now.toDateString();
+      if (dateFilter === 'week') return (now - d) < 7 * 24 * 60 * 60 * 1000;
+      if (dateFilter === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       return true;
-    })
-    .filter(b => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      const name = (b.customer?.name || b.customerName || '').toLowerCase();
-      const phone = b.customer?.phone || b.customerMobile || '';
-      return (
-        b.invoiceNumber.toLowerCase().includes(q) ||
-        name.includes(q) ||
-        phone.includes(q)
-      );
-    })
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    };
 
-  // Only active tax invoices count toward total net revenue
-  const totalRevenue = filtered
-    .filter(b => !isQuotationBill(b) && b.status !== 'refunded' && b.status !== 'exchanged')
-    .reduce((s, b) => s + (b.totalAmount ?? b.finalTotal ?? 0), 0);
+    const result = bills
+      .filter(filterDate)
+      .filter(b => {
+        const isQuote = isQuotationBill(b);
+        if (typeFilter === 'tax_invoice') return !isQuote && b.status !== 'refunded' && b.status !== 'exchanged';
+        if (typeFilter === 'quotation') return isQuote && b.status !== 'refunded' && b.status !== 'exchanged';
+        if (typeFilter === 'refunded') return b.status === 'refunded';
+        if (typeFilter === 'exchanged') return b.status === 'exchanged';
+        return true;
+      })
+      .filter(b => {
+        if (!search.trim()) return true;
+        const q = search.toLowerCase();
+        const name = (b.customer?.name || b.customerName || '').toLowerCase();
+        const phone = b.customer?.phone || b.customerMobile || '';
+        return (
+          (b.invoiceNumber || '').toLowerCase().includes(q) ||
+          name.includes(q) ||
+          phone.includes(q)
+        );
+      })
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const rev = result
+      .filter(b => !isQuotationBill(b) && b.status !== 'refunded' && b.status !== 'exchanged')
+      .reduce((s, b) => s + (b.totalAmount ?? b.finalTotal ?? 0), 0);
+
+    return { filtered: result, totalRevenue: rev };
+  }, [bills, dateFilter, typeFilter, search]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -618,3 +630,5 @@ export default function InvoicesPage({ bills, onProcessBillAction, onEditBill, c
     </div>
   );
 }
+
+export default React.memo(InvoicesPage);

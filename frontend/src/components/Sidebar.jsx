@@ -29,7 +29,7 @@ const navItems = [
   { id: 'settings', label: 'Settings', icon: Settings, adminOnly: true, shortcut: 'Alt+E' },
 ];
 
-export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogout, collapsed, setCollapsed, onHover }) {
+function SidebarComponent({ activeTab, setActiveTab, currentStaff, onLogout, collapsed, setCollapsed, onHover }) {
   const sidebarRef = useRef(null);
 
   const [isMobile, setIsMobile] = useState(
@@ -64,7 +64,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
         className={`
           fixed top-0 left-0 h-full z-30 flex flex-col
           bg-white border-r border-gray-200
-          transition-all duration-300 ease-in-out shadow-2xl
+          transition-[width,transform] duration-200 ease-out shadow-2xl
           ${collapsed ? '-translate-x-full lg:translate-x-0 lg:w-20' : 'translate-x-0 w-64'}
         `}
       >
@@ -103,10 +103,10 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
               }}
               className={`
                 w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                transition-all duration-200 group relative
+                transition-colors duration-150 group relative
                 ${activeTab === id
                   ? 'bg-amber-50 text-amber-700 border border-amber-200 shadow-sm'
-                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
+                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800 border border-transparent'
                 }
               `}
             >
@@ -170,3 +170,5 @@ export default function Sidebar({ activeTab, setActiveTab, currentStaff, onLogou
     </>
   );
 }
+
+export default React.memo(SidebarComponent);

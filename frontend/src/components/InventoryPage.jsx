@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Package, Plus, Edit3, Trash2, Search, X, Save,
   AlertTriangle, CheckCircle2, Barcode, Lock, Image as ImageIcon, Loader2,
@@ -19,7 +19,7 @@ function formatShortDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function InventoryPage({ products, onCreateProduct, onUpdateProduct, onDeleteProduct, currentStore, currentStaff, goldRate = 7500, silverRate = 85 }) {
+function InventoryPage({ products, onCreateProduct, onUpdateProduct, onDeleteProduct, currentStore, currentStaff, goldRate = 7500, silverRate = 85 }) {
   const [search, setSearch]           = useState('');
   const [showForm, setShowForm]       = useState(false);
   const [editProduct, setEditProduct] = useState(null);
@@ -36,12 +36,15 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
   useScrollLock(showForm || !!deleteConfirm);
 
 
-  const filtered = products.filter(p => {
+  const filtered = useMemo(() => {
+    if (!search.trim()) return products;
     const q = search.toLowerCase();
-    const pid     = (p._id || p.id || '').toString().toLowerCase();
-    const barcode = (p.barcode || '').toLowerCase();
-    return p.name.toLowerCase().includes(q) || pid.includes(q) || barcode.includes(q) || p.category.toLowerCase().includes(q);
-  });
+    return products.filter(p => {
+      const pid     = (p._id || p.id || '').toString().toLowerCase();
+      const barcode = (p.barcode || '').toLowerCase();
+      return (p.name || '').toLowerCase().includes(q) || pid.includes(q) || barcode.includes(q) || (p.category || '').toLowerCase().includes(q);
+    });
+  }, [products, search]);
 
   const openAdd = () => {
     const nextNum = String(products.length + 1).padStart(3, '0');
@@ -111,11 +114,11 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
         await onCreateProduct(productData);
         setSuccess('Product added successfully!');
       }
+      setTimeout(() => setSuccess(''), 2500);
       setShowForm(false);
       setImagePreview(null);
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setFormError('Failed to save product: ' + err.message);
+      setFormError(err.message || 'Failed to save product');
     } finally {
       setSaveLoading(false);
     }
@@ -138,17 +141,28 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
     }
   };
 
+  const inventoryStateRef = useRef({});
+  inventoryStateRef.current = {
+    isAdminOrManager,
+    showForm,
+    deleteConfirm,
+    search,
+    openAdd,
+    handleSave,
+  };
+
   // ── Keyboard Shortcuts for Inventory Page ─────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e) => {
       const activeEl = document.activeElement;
       const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl?.tagName);
+      const state = inventoryStateRef.current;
 
       // 1. Alt + N or Insert: Add Product
       if ((e.altKey && (e.key === 'n' || e.key === 'N')) || e.key === 'Insert') {
-        if (isAdminOrManager) {
+        if (state.isAdminOrManager) {
           e.preventDefault();
-          openAdd();
+          state.openAdd();
           return;
         }
       }
@@ -162,27 +176,27 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
       }
 
       // 3. Ctrl + Enter inside Add/Edit Form: Save Product
-      if (showForm && e.ctrlKey && e.key === 'Enter') {
+      if (state.showForm && e.ctrlKey && e.key === 'Enter') {
         e.preventDefault();
-        handleSave();
+        state.handleSave();
         return;
       }
 
       // 4. Escape: Close Form / Cancel Delete / Clear Search
       if (e.key === 'Escape') {
-        if (showForm) {
+        if (state.showForm) {
           e.preventDefault();
           setShowForm(false);
           setImagePreview(null);
           setFormError('');
           return;
         }
-        if (deleteConfirm) {
+        if (state.deleteConfirm) {
           e.preventDefault();
           setDeleteConfirm(null);
           return;
         }
-        if (search) {
+        if (state.search) {
           e.preventDefault();
           setSearch('');
           searchRef.current?.blur();
@@ -193,7 +207,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showForm, deleteConfirm, search, isAdminOrManager, handleSave]);
+  }, []);
 
 
   const stockBadge = (stock) => {
@@ -807,10 +821,10 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
             </div>
 
             <div className="flex gap-3 mt-6 border-t border-gray-100 pt-4">
-              <button onClick={() => { setShowForm(false); setImagePreview(null); }} disabled={saveLoading} className="flex-1 py-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 font-semibold hover:bg-gray-200 transition-all disabled:opacity-50">
+              <button onClick={() => { setShowForm(false); setImagePreview(null); }} disabled={saveLoading} className="flex-1 py-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50">
                 Cancel
               </button>
-              <button onClick={handleSave} disabled={saveLoading} className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-60" title="Save Product (Ctrl+Enter)">
+              <button onClick={handleSave} disabled={saveLoading} className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-400 transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-60" title="Save Product (Ctrl+Enter)">
                 {saveLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 <span>{saveLoading ? 'Saving...' : editProduct ? 'Update Product' : 'Add Product'}</span>
                 <kbd className="px-1.5 py-0.5 bg-black/20 text-white rounded text-[10px] font-mono font-bold ml-1">Ctrl+Enter</kbd>
@@ -822,3 +836,6 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
     </div>
   );
 }
+
+export default React.memo(InventoryPage);
+
