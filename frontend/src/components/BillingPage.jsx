@@ -1480,38 +1480,43 @@ export default function BillingPage({
           </div>
 
           {/* ── Section 2.5: Dedicated Old Gold / Silver Exchange (பழைய நகை வரவு) ── */}
-          <div className="px-5 py-3.5 border-b border-gray-100 bg-white">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold shrink-0">
-                  <RefreshCw size={13} className="text-amber-700 stroke-[2.2]" />
+          <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 bg-white">
+            <div className="flex items-center justify-between gap-3 mb-1">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold shrink-0">
+                  <RefreshCw size={14} className="text-amber-700 stroke-[2.2]" />
                 </span>
-                <div>
-                  <p className="text-gray-800 font-bold text-xs sm:text-sm flex items-center gap-1.5">
-                    <span>Old Metal Exchange</span>
-                    <kbd className="text-[10px] font-mono text-amber-700 bg-amber-100/80 border border-amber-300 px-1.5 py-0.2 rounded font-semibold">Alt+K</kbd>
+                <div className="min-w-0">
+                  <p className="text-gray-800 font-bold text-xs sm:text-sm whitespace-nowrap truncate">
+                    Old Metal Exchange
                   </p>
-                  <p className="text-[10px] text-gray-400">பழைய தங்கம் / வெள்ளி வரவு</p>
+                  <p className="text-[10px] text-gray-400 whitespace-nowrap truncate">பழைய தங்கம் / வெள்ளி வரவு</p>
                 </div>
               </div>
+
               {exchangeEnabled ? (
-                <button
-                  type="button"
-                  onClick={handleCloseExchange}
-                  className="px-3 py-1 rounded-xl text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 hover:text-rose-700 hover:border-rose-300 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                  title="Close and remove old metal exchange"
-                >
-                  <X size={13} className="stroke-[2.5]" />
-                  <span>Close</span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <kbd className="hidden sm:inline-block text-[10px] font-mono text-amber-700 bg-amber-100/80 border border-amber-300 px-1.5 py-0.5 rounded font-semibold">Alt+K</kbd>
+                  <button
+                    type="button"
+                    onClick={handleCloseExchange}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 hover:text-rose-700 hover:border-rose-300 transition-all shadow-xs flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                    title="Close and remove old metal exchange (Alt+K)"
+                  >
+                    <X size={13} className="stroke-[2.5]" />
+                    <span>Close</span>
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => setExchangeEnabled(true)}
-                  className="px-3 py-1 rounded-xl text-xs font-bold transition-all border shadow-xs select-none flex items-center gap-1.5 bg-gray-50 text-gray-600 border-gray-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border border-gray-250 shadow-xs select-none flex items-center gap-2 bg-gray-50 text-gray-700 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300 cursor-pointer shrink-0 whitespace-nowrap"
+                  title="Add Old Metal Exchange (Alt+K)"
                 >
-                  <span className="w-2 h-2 rounded-full bg-gray-400" />
-                  + Add Old Metal
+                  <span className="w-2 h-2 rounded-full bg-gray-400 shrink-0" />
+                  <span className="whitespace-nowrap font-semibold">+ Add Old Metal</span>
+                  <kbd className="text-[10px] font-mono font-bold text-amber-700 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded shadow-2xs">Alt+K</kbd>
                 </button>
               )}
             </div>
