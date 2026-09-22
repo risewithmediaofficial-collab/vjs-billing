@@ -249,6 +249,128 @@ export const JEWEL_LOAN_TAMIL_TERMS = [
   },
 ];
 
+// ─── Gold & Silver Savings Scheme Terms & Conditions ──────────────────────────
+export const SAVINGS_SCHEME_TERMS = [
+  {
+    num: 1,
+    title: 'Scheme Tenure & Plans',
+    text: 'Available as 11+1 Bonus Plan (Pay 11 months, get 1 month bonus free) or 5+1 Bonus Plan for both Gold and Silver.',
+  },
+  {
+    num: 2,
+    title: 'Due Date',
+    text: 'Monthly installment must be paid promptly between the 1st and 10th of every month.',
+  },
+  {
+    num: 3,
+    title: 'Silver 11+1 Scheme',
+    text: 'The same 11+1 scheme applies to Silver. Pay 11 monthly installments and get the 12th month installment as a free bonus.',
+  },
+  {
+    num: 4,
+    title: 'Zero Wastage for Silver (0% Wastage / VA)',
+    text: 'When claiming/redeeming under the Silver Savings Scheme, NO wastage (சேதாரம் இல்லை / 0% VA) will be charged on silver jewellery and articles.',
+  },
+  {
+    num: 5,
+    title: 'Not Eligible for Coins (Strict Rule)',
+    text: 'Both Gold and Silver savings schemes are strictly NOT eligible for purchasing Gold Coins or Silver Coins. Benefits apply exclusively to jewellery and ornaments.',
+  },
+  {
+    num: 6,
+    title: 'Passbook Presentation',
+    text: 'Customer must present this physical savings passbook at every installment payment and during final maturity redemption.',
+  },
+  {
+    num: 7,
+    title: 'Hallmark Guarantee',
+    text: 'At maturity, 100% BIS Hallmark jewellery will be issued with high quality and genuine purity guarantee.',
+  },
+  {
+    num: 8,
+    title: 'Early Closure & Management Decisions',
+    text: 'If closed prematurely before tenure completion, bonus benefits will not apply. Jewellery will be provided only for paid amounts. Management decision is final.',
+  },
+];
+
+// ─── Tamil Terms & Conditions for Savings Scheme Passbook Backside ─────────────
+export const SAVINGS_SCHEME_TAMIL_TERMS = [
+  {
+    num: 1,
+    title: 'திட்ட காலம் & மாதிரிகள் (Scheme Tenure)',
+    text: 'இத்திட்டம் 11+1 மற்றும் 5+1 தவணைகளைக் கொண்டது. தங்கம் மற்றும் வெள்ளி ஆகிய இரு ஆபரணங்களுக்கும் இத்திட்டம் பொருந்தும்.',
+  },
+  {
+    num: 2,
+    title: 'தவணை செலுத்தும் நாள் (Due Date)',
+    text: 'பிரதி மாதம் 1 முதல் 10-ஆம் தேதிக்குள் மாதத் தவணைத் தொகை தவறாமல் செலுத்தப்பட வேண்டும்.',
+  },
+  {
+    num: 3,
+    title: 'வெள்ளி 11+1 திட்டம் (Silver 11+1 Scheme)',
+    text: 'தங்கத்தை போன்றே வெள்ளிப் பொருட்களுக்கும் 11+1 சேமிப்புத் திட்டம் பொருந்தும் (11 மாதங்கள் செலுத்தினால், 12-வது மாத தவணை போனஸாக வழங்கப்படும்).',
+  },
+  {
+    num: 4,
+    title: 'வெள்ளி திட்டத்தில் சேதாரம் இல்லை (Zero Wastage on Silver Scheme)',
+    text: 'வெள்ளி சேமிப்பு திட்ட முதிர்வில் வெள்ளி நகைகள் அல்லது வெள்ளிப் பொருட்கள் எடுக்கும் போது எந்தவித செய்கூலி & சேதாரமும் (0% Wastage / VA) கிடையாது (சேதாரம் முற்றிலும் இலவசம்).',
+  },
+  {
+    num: 5,
+    title: 'நாணயங்கள் பெற இயலாது (Strictly Not Eligible for Coins)',
+    text: 'முக்கிய விதிமுறை: தங்கம் மற்றும் வெள்ளி ஆகிய இரு சேமிப்புத் திட்டங்களிலும் தங்க நாணயம் (Gold Coins) அல்லது வெள்ளி நாணயம் (Silver Coins) பெற இயலாது. இத்திட்டம் ஆபரண நகைகள் மற்றும் வெள்ளி பொருட்களுக்கு மட்டுமே பொருந்தும்.',
+  },
+  {
+    num: 6,
+    title: 'அட்டை கொண்டுவருதல் (Passbook Presentation)',
+    text: 'ஒவ்வொரு முறை தவணை செலுத்தும்போதும், முதிர்வில் நகை எடுக்கும்போதும் இந்த சேமிப்பு திட்ட பாஸ்புக் அட்டையை கட்டாயம் கொண்டுவர வேண்டும்.',
+  },
+  {
+    num: 7,
+    title: 'ஹால்மார்க் உத்தரவாதம் (Hallmark Guarantee)',
+    text: 'திட்ட முதிர்வில் 100% BIS ஹால்மார்க் ஆபரணங்கள் மற்றும் உயர்தர வெள்ளிப் பொருட்கள் மட்டுமே முழு உத்தரவாதத்துடன் வழங்கப்படும்.',
+  },
+  {
+    num: 8,
+    title: 'திட்ட விலகல் & முடிவு (Early Closure & Disputes)',
+    text: 'தவிர்க்க முடியாத காரணத்தால் திட்டத்தை பாதியில் நிறுத்தினால் போனஸ் சலுகை இன்றி செலுத்திய தொகைக்கு மட்டும் அன்றைய மார்க்கெட் விலையில் நகைகள் தரப்படும். நிர்வாகத்தின் முடிவே இறுதியானது.',
+  },
+];
+
+// ─── Scheme Benefits & Customer Privileges ───────────────────────────────────
+export const SAVINGS_SCHEME_BENEFITS = [
+  {
+    title: '1 மாத கூடுதல் போனஸ் (1 Month Free Bonus)',
+    text: '11 மாதங்கள் குறித்த காலத்தில் செலுத்தும் வாடிக்கையாளர்களுக்கு 12வது மாத தவணையை நிறுவனமே இலவச போனஸாக வழங்குகிறது.',
+    badge: '11+1 Bonus',
+  },
+  {
+    title: 'வெள்ளி நகைகளுக்கு சேதாரம் இல்லை (0% Wastage on Silver)',
+    text: 'வெள்ளி சேமிப்பு திட்டத்தில் முதிர்வில் எடுக்கும் வெள்ளி ஆபரணங்கள் மற்றும் பொருட்களுக்கு சேதாரம் (VA) முற்றிலும் இலவசம்!',
+    badge: 'Zero Wastage',
+  },
+  {
+    title: '100% BIS ஹால்மார்க் ஆபரணங்கள்',
+    text: 'மத்திய அரசு அங்கீகாரம் பெற்ற உயர்தர HUID 916 ஹால்மார்க் தங்க நகைகள் மற்றும் தூய வெள்ளி ஆபரணங்கள் மட்டுமே வழங்கப்படும்.',
+    badge: '100% Hallmark',
+  },
+  {
+    title: 'நாணயங்கள் பெற இயலாது (Exclusively for Jewellery)',
+    text: 'இரு திட்டங்களிலும் தங்கம் & வெள்ளி நாணயங்கள் பெற இயலாது; அழகு ஆபரண நகைகள் மற்றும் வெள்ளி பொருட்களுக்கு மட்டுமே பொருந்தும்.',
+    badge: 'Jewellery Only',
+  },
+  {
+    title: 'தீபாவளி & பண்டிகை சிறப்பு பரிசுகள்',
+    text: 'தீபாவளி மற்றும் விசேஷ பண்டிகைகளில் இனிப்புப் பெட்டி மற்றும் சிறப்பு வீட்டு உபயோக பரிசுப் பொருட்கள் வழங்கப்படும்.',
+    badge: 'Special Gifts',
+  },
+  {
+    title: 'டிஜிட்டல் ரசீது & எஸ்.எம்.எஸ் எச்சரிக்கை',
+    text: 'ஒவ்வொரு தவணைக்கும் உடனடி கணினி ரசீது மற்றும் மொபைல் பதிவு அனுப்பி வைக்கப்படும்.',
+    badge: 'Instant Receipt',
+  },
+];
+
 // ─── Office Hours & Schedule for Jewel Loan Card Backside ──────────────────────
 export const JEWEL_LOAN_OFFICE_HOURS = {
   title: 'அலுவலக நேரம்',

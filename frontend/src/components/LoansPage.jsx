@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Wallet, Search, Plus, X, IndianRupee, Clock, 
   CheckCircle2, AlertTriangle, FileText, Printer, Camera, Image as ImageIcon, Loader2, User,
-  CreditCard, Calendar, RotateCw, Layers, RefreshCw
+  CreditCard, Calendar, RotateCw, Layers, RefreshCw, AlertCircle, Phone, Scissors
 } from 'lucide-react';
 import { 
   calculateLoanInterest, calculateDueDate, getLoanDueDate, generateLoanNumber, 
@@ -330,8 +330,8 @@ function LoanCardBillPreview({ loan, initialSide = 'front', onClose }) {
                     <img src={loan.goldImage} alt="Ornament" className="w-full max-h-28 object-contain rounded border border-gray-300 bg-gray-50" />
                   ) : (
                     <div className="w-full h-24 border border-dashed border-gray-400 rounded flex items-center justify-center bg-gray-50 text-gray-400">
-                      <div className="text-center">
-                        <div className="text-xl mb-0.5">📷</div>
+                      <div className="text-center flex flex-col items-center justify-center">
+                        <Camera size={20} className="text-gray-400 stroke-[1.75] mb-1" />
                         <div className="text-[9px]">Photo Here</div>
                       </div>
                     </div>
@@ -611,7 +611,10 @@ function LoanCardBillPreview({ loan, initialSide = 'front', onClose }) {
                       <p className="text-xs font-semibold text-gray-800">{JEWEL_LOAN_COMPANY_DETAILS.branchBox.building}</p>
                       <p className="text-xs text-gray-700">{JEWEL_LOAN_COMPANY_DETAILS.branchBox.street}</p>
                       <p className="text-xs font-bold text-gray-900 uppercase">{JEWEL_LOAN_COMPANY_DETAILS.branchBox.city}</p>
-                      <p className="text-xs font-bold text-blue-950 mt-1">📞 : {JEWEL_LOAN_COMPANY_DETAILS.branchBox.phone}</p>
+                      <p className="text-xs font-bold text-blue-950 mt-1 flex items-center gap-1">
+                        <Phone size={11} className="stroke-[2.5]" />
+                        <span>: {JEWEL_LOAN_COMPANY_DETAILS.branchBox.phone}</span>
+                      </p>
                       <p className="text-[10.5px] text-gray-600">email: {JEWEL_LOAN_COMPANY_DETAILS.branchBox.email}</p>
                     </div>
                   </div>
@@ -624,8 +627,10 @@ function LoanCardBillPreview({ loan, initialSide = 'front', onClose }) {
 
                 {/* ─── HORIZONTAL FOLD LINE DIVIDER ─── */}
                 <div className="my-6 border-t-2 border-dashed border-gray-400 relative text-center">
-                  <span className="bg-white px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest relative -top-2 select-none">
-                    ✂️ மடிக்க வேண்டிய இடம் / Fold Line Across Center ✂️
+                  <span className="bg-white px-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest relative -top-2 select-none inline-flex items-center gap-1.5">
+                    <Scissors size={12} className="stroke-[2]" />
+                    <span>மடிக்க வேண்டிய இடம் / Fold Line Across Center</span>
+                    <Scissors size={12} className="stroke-[2] scale-x-[-1]" />
                   </span>
                 </div>
 
@@ -902,9 +907,9 @@ function LoanCustomerCardModal({ loan, onClose }) {
 
             {/* Footer conditions */}
             <div className="mt-2.5 pt-2 border-t border-blue-300 text-[9px] text-blue-950 space-y-0.5 leading-tight">
-              <p>✤ இந்த ரசீதை கவனமாக பாதுகாக்க வேண்டும்.</p>
-              <p>✤ {loan.tenureMonths || 11} மாதங்களுக்குள் நகையை மீட்டுக்கொள்ள வேண்டும்.</p>
-              <p>✤ தவணைக்கு மேல் கூடுதல் வட்டி வசூலிக்கப்படும்.</p>
+              <p>• இந்த ரசீதை கவனமாக பாதுகாக்க வேண்டும்.</p>
+              <p>• {loan.tenureMonths || 11} மாதங்களுக்குள் நகையை மீட்டுக்கொள்ள வேண்டும்.</p>
+              <p>• தவணைக்கு மேல் கூடுதல் வட்டி வசூலிக்கப்படும்.</p>
             </div>
           </div>
         </div>
@@ -1765,7 +1770,8 @@ export default function LoansPage({ loans, bills = [], onSaveLoan, onUpdateLoan,
 
             {formError && (
               <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mt-4 text-xs font-medium animate-fade-in">
-                <span>⚠️</span> {formError}
+                <AlertCircle size={14} className="shrink-0" />
+                <span>{formError}</span>
               </div>
             )}
 

@@ -6,12 +6,14 @@ const SchemeEnrollmentSchema = new mongoose.Schema(
     customerPhone: { type: String, required: true },
     customerAddress: { type: String, default: '' },
     schemeName: { type: String, required: true, default: 'VJS Gold Savings Scheme' },
+    metalType: { type: String, enum: ['gold', 'silver'], default: 'gold' },
     schemeType: { type: String, enum: ['classic_11_1', 'classic_5_1', 'interest_plan'], default: 'classic_11_1' },
     monthlyAmount: { type: Number, required: true },
     totalMonths: { type: Number, required: true, default: 11 },
     bonusMonths: { type: Number, required: true, default: 1 },
     interestRate: { type: Number, default: 0 }, // Interest rate % (e.g. 5 for 5% interest)
-    goldRateAtEnrollment: { type: Number, required: true },
+    goldRateAtEnrollment: { type: Number, default: 0 },
+    silverRateAtEnrollment: { type: Number, default: 0 },
     payments: [
       {
         monthIndex: { type: Number, required: true }, // 0 to totalMonths - 1

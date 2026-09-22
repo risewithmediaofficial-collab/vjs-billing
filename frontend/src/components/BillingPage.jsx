@@ -4,7 +4,7 @@ import {
   User, Phone, Tag, CreditCard, Printer,
   CheckCircle2, ShoppingCart,
   IndianRupee, Package, X, Save, Image as ImageIcon, ChevronDown, Loader2,
-  AlertCircle, Split as SplitIcon, Sparkles, Check, FileText, Receipt
+  AlertCircle, Split as SplitIcon, Sparkles, Check, FileText, Receipt, RefreshCw, Coins, GripVertical
 } from 'lucide-react';
 import { calculateBillAmounts, generateInvoiceNumber, formatCurrency, GST_RATE } from '../data.js';
 import BillPreview from './BillPreview.jsx';
@@ -20,7 +20,29 @@ const emptyNewProduct = {
   metalType: 'gold', gstPercent: 3,
 };
 
-export default function BillingPage({ products, bills, currentStaff, onGenerateBill, onAddProduct, currentStore, goldRate, silverRate }) {
+const emptyExchangeForm = {
+  metalType: 'gold',
+  purity: '22K',
+  grossWeight: '',
+  meltingLoss: '',
+  rate: 7500,
+  totalDeduction: '',
+  notes: '',
+};
+
+export default function BillingPage({
+  products,
+  bills,
+  currentStaff,
+  onGenerateBill,
+  onAddProduct,
+  currentStore,
+  goldRate,
+  silverRate,
+  editingBill = null,
+  onCancelEdit = null,
+  onUpdateBill = null,
+}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('name');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -32,6 +54,11 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
   const [showCustomerDetails, setShowCustomerDetails] = useState(true);
   const [discountPercent, setDiscountPercent] = useState('');
   const [chargeGst, setChargeGst] = useState(true); // Toggle to charge GST or generate without GST
+  const [exchangeEnabled, setExchangeEnabled] = useState(false);
+  const [exchangeForm, setExchangeForm] = useState(() => ({
+    ...emptyExchangeForm,
+    rate: goldRate || 7500,
+  }));
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [paymentSplits, setPaymentSplits] = useState([
     { method: 'Cash', amount: '', reference: '' },
@@ -54,6 +81,70 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
   const [addLoading, setAddLoading] = useState(false);
   const [generateLoading, setGenerateLoading] = useState(false);
   const [mobileTab, setMobileTab] = useState('products'); // 'products' | 'bill' for responsive screens < lg
+
+  // ── Draggable Split Sections State (Products vs Customer & Bill) ──
+  const [leftWidthPercent, setLeftWidthPercent] = useState(() => {
+    try {
+      const saved = localStorage.getItem('vjs_billing_left_width');
+      const parsed = saved ? parseFloat(saved) : 50;
+      return !isNaN(parsed) && parsed >= 25 && parsed <= 75 ? parsed : 50;
+    } catch {
+      return 50;
+    }
+  });
+  const [isDraggingSplit, setIsDraggingSplit] = useState(false);
+  const [isLgScreen, setIsLgScreen] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
+  const [isDragOverBill, setIsDragOverBill] = useState(false);
+  const splitContainerRef = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => setIsLgScreen(window.innerWidth >= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vjs_billing_left_width', String(Math.round(leftWidthPercent)));
+    } catch {
+      // ignore storage errors
+    }
+  }, [leftWidthPercent]);
+
+  useEffect(() => {
+    if (!isDraggingSplit) return;
+
+    const handleMove = (e) => {
+      if (!splitContainerRef.current) return;
+      const rect = splitContainerRef.current.getBoundingClientRect();
+      const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : null);
+      if (clientX === null || clientX === undefined) return;
+      const offsetX = clientX - rect.left;
+      const totalWidth = rect.width;
+      if (totalWidth <= 0) return;
+      let newPercent = (offsetX / totalWidth) * 100;
+      newPercent = Math.min(Math.max(newPercent, 25), 75);
+      setLeftWidthPercent(newPercent);
+    };
+
+    const handleUp = () => {
+      setIsDraggingSplit(false);
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchmove', handleMove);
+    window.addEventListener('touchend', handleUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleUp);
+    };
+  }, [isDraggingSplit]);
 
   // Lock screen scroll when Add Product modal or Rough Bill preview is active
   useScrollLock(showAddProduct || !!localPreviewBill);
@@ -78,10 +169,86 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
     }
   };
 
+  const handleExchangeMetalChange = (metal) => {
+    if (metal === 'silver') {
+      setExchangeForm(p => ({ ...p, metalType: 'silver', purity: 'Silver', rate: silverRate || 85 }));
+    } else {
+      setExchangeForm(p => ({ ...p, metalType: 'gold', purity: '22K', rate: goldRate || 7500 }));
+    }
+  };
+
+  const handleCloseExchange = () => {
+    setExchangeEnabled(false);
+    setExchangeForm({ ...emptyExchangeForm, rate: goldRate || 7500 });
+  };
+
   // Auto-fill rate when purity changes (only relevant for gold sub-types)
   const handlePurityChange = (purity) => {
     setAddForm(p => ({ ...p, purity }));
   };
+
+  // Populate form when editing an existing bill
+  useEffect(() => {
+    if (editingBill) {
+      if (Array.isArray(editingBill.items)) {
+        setCartItems(editingBill.items.map((item, idx) => ({
+          ...item,
+          productId: item.productId || item.id || `item-${idx}`,
+          id: item.productId || item.id || `item-${idx}`,
+          name: item.name || '',
+          category: item.category || 'Rings',
+          purity: item.purity || '22K',
+          metalType: item.metalType || (item.purity === 'Silver' ? 'silver' : 'gold'),
+          weight: item.weight || item.grossWeight || 0,
+          grossWeight: item.grossWeight || item.weight || 0,
+          netWeight: item.netWeight || item.weight || 0,
+          stoneWeight: item.stoneWeight || 0,
+          stoneCharge: item.stoneCharge || 0,
+          makingCharge: item.makingCharge || 0,
+          vaPercent: item.vaPercent || 0,
+          vaPerGram: item.vaPerGram || 0,
+          goldRate: item.goldRate || (item.purity === 'Silver' ? silverRate : goldRate),
+          rate: item.goldRate || (item.purity === 'Silver' ? silverRate : goldRate),
+          quantity: item.quantity || 1,
+          hsn: item.hsn || (item.purity === 'Silver' ? '7114' : '711319'),
+          stock: 999, // in-stock
+        })));
+      }
+
+      setCustomer({
+        name: editingBill.customer?.name || editingBill.customerName || '',
+        mobile: editingBill.customer?.phone || editingBill.customerMobile || '',
+        address: editingBill.customer?.address || editingBill.customerAddress || '',
+      });
+
+      setPaymentMethod(editingBill.paymentMethod || 'Cash');
+      if (editingBill.paymentSplits && editingBill.paymentSplits.length > 0) {
+        setPaymentSplits(editingBill.paymentSplits);
+      }
+
+      setChargeGst(editingBill.includeGst !== false);
+      setDiscountPercent(editingBill.discountPercent ? String(editingBill.discountPercent) : '');
+
+      if (editingBill.exchangeDetails && editingBill.exchangeDetails.applied) {
+        setExchangeEnabled(true);
+        setExchangeForm({
+          metalType: editingBill.exchangeDetails.metalType || 'gold',
+          purity: editingBill.exchangeDetails.purity || '22K',
+          grossWeight: editingBill.exchangeDetails.grossWeight || '',
+          meltingLoss: editingBill.exchangeDetails.meltingLoss || '',
+          rate: editingBill.exchangeDetails.rate || (editingBill.exchangeDetails.metalType === 'silver' ? silverRate : goldRate),
+          totalDeduction: editingBill.exchangeDetails.totalDeduction || '',
+          notes: editingBill.exchangeDetails.notes || '',
+        });
+      } else {
+        setExchangeEnabled(false);
+        setExchangeForm({
+          ...emptyExchangeForm,
+          rate: goldRate || 7500,
+        });
+      }
+    }
+  }, [editingBill, goldRate, silverRate]);
 
   const handleAddImageChange = (e) => {
     const file = e.target.files[0];
@@ -164,24 +331,6 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
   };
 
   useEffect(() => {
-    const handleKey = (e) => {
-      if (e.key === 'Enter' && barcodeBuffer.length > 3) {
-        const found = products.find(p => p.barcode === barcodeBuffer || p.id === barcodeBuffer);
-        if (found) addToCart(found);
-        setBarcodeBuffer('');
-        return;
-      }
-      if (e.key.length === 1 && !e.ctrlKey && !e.altKey) {
-        clearTimeout(barcodeTimer.current);
-        setBarcodeBuffer(prev => prev + e.key);
-        barcodeTimer.current = setTimeout(() => setBarcodeBuffer(''), 300);
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [barcodeBuffer, products]);
-
-  useEffect(() => {
     let results = products;
     if (selectedCategory !== 'All') {
       results = results.filter(p => p.category === selectedCategory);
@@ -253,9 +402,21 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
   const discountAmount = discountPercent
     ? Math.min((parseFloat(discountPercent) || 0) / 100 * grossTotal, grossTotal)
     : 0;
-  const finalTotal = grossTotal - discountAmount;
+
+  // Old Gold / Silver Exchange calculation
+  const exchangeGross = parseFloat(exchangeForm.grossWeight) || 0;
+  const exchangeLoss = parseFloat(exchangeForm.meltingLoss) || 0;
+  const exchangeNetWeight = Math.max(0, exchangeGross - exchangeLoss);
+  const exchangeRate = parseFloat(exchangeForm.rate) || 0;
+  const calculatedExchangeDeduction = exchangeForm.totalDeduction !== '' && !isNaN(parseFloat(exchangeForm.totalDeduction))
+    ? parseFloat(exchangeForm.totalDeduction)
+    : Math.round(exchangeNetWeight * exchangeRate);
+  const exchangeAmount = exchangeEnabled ? calculatedExchangeDeduction : 0;
+
+  const afterDiscount = grossTotal - discountAmount;
+  const finalTotal = Math.max(0, afterDiscount - exchangeAmount);
   const netPayable = Math.round(finalTotal);
-  const roundOff = Math.round((netPayable - finalTotal) * 100) / 100;
+  const roundOff = Math.round((netPayable - (afterDiscount - exchangeAmount)) * 100) / 100;
 
   // Toast notification helper
   const showToast = (msg) => {
@@ -363,12 +524,23 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
       cgstAmount: 0,
       sgstAmount: 0,
       gstAmount: 0,
-      totalAmount: taxableValue - discountAmount,
-      finalTotal: taxableValue - discountAmount,
-      netPayable: Math.round(taxableValue - discountAmount),
+      totalAmount: Math.max(0, taxableValue - discountAmount - exchangeAmount),
+      finalTotal: Math.max(0, taxableValue - discountAmount - exchangeAmount),
+      netPayable: Math.round(Math.max(0, taxableValue - discountAmount - exchangeAmount)),
       roundOff: 0,
       discount: discountAmount,
       discountPercent: parseFloat(discountPercent) || 0,
+      exchangeDetails: {
+        applied: exchangeEnabled && exchangeAmount > 0,
+        metalType: exchangeForm.metalType,
+        purity: exchangeForm.purity,
+        grossWeight: exchangeGross,
+        meltingLoss: exchangeLoss,
+        netWeight: exchangeNetWeight,
+        rate: exchangeRate,
+        totalDeduction: exchangeAmount,
+        notes: exchangeForm.notes.trim(),
+      },
       paymentMethod: 'Quotation',
       paymentSplits: [],
       isRoughBill: true,
@@ -498,6 +670,17 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
       netPayable,
       discount: discountAmount,
       discountPercent: parseFloat(discountPercent) || 0,
+      exchangeDetails: {
+        applied: exchangeEnabled && exchangeAmount > 0,
+        metalType: exchangeForm.metalType,
+        purity: exchangeForm.purity,
+        grossWeight: exchangeGross,
+        meltingLoss: exchangeLoss,
+        netWeight: exchangeNetWeight,
+        rate: exchangeRate,
+        totalDeduction: exchangeAmount,
+        notes: exchangeForm.notes.trim(),
+      },
       paymentMethod,
       paymentSplits: validSplits,
       isRoughBill: false,
@@ -509,7 +692,18 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
 
     try {
       setGenerateLoading(true);
-      await onGenerateBill(bill);
+      if (editingBill) {
+        if (onUpdateBill) {
+          await onUpdateBill(editingBill._id || editingBill.id, {
+            ...bill,
+            invoiceNumber: editingBill.invoiceNumber,
+            billType: editingBill.billType || bill.billType,
+            isRoughBill: editingBill.isRoughBill || false,
+          });
+        }
+      } else {
+        await onGenerateBill(bill);
+      }
       setSuccess(true);
       setTimeout(() => setSuccess(false), 4000);
       setCartItems([]);
@@ -520,13 +714,141 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
         { method: 'Cash', amount: '', reference: '' },
         { method: 'UPI', amount: '', reference: '' },
       ]);
+      setExchangeEnabled(false);
+      setExchangeForm({ ...emptyExchangeForm, rate: goldRate || 7500 });
       setFieldErrors({ name: false, mobile: false });
+      if (editingBill && onCancelEdit) {
+        onCancelEdit();
+      }
     } catch (err) {
-      setError(err.message || 'Failed to generate bill. Please try again.');
+      setError(err.message || (editingBill ? 'Failed to update invoice.' : 'Failed to generate bill. Please try again.'));
     } finally {
       setGenerateLoading(false);
     }
   };
+
+  // ── Keyboard Shortcuts for Billing Page ───────────────────────────────────
+  useEffect(() => {
+    const handleKey = (e) => {
+      const activeEl = document.activeElement;
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl?.tagName);
+
+      // 1. Ctrl + Enter: Generate Bill or Save & Update Edited Invoice
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        handleGenerate();
+        return;
+      }
+
+      // 2. F9: POS standard alternative for Bill Generation
+      if (e.key === 'F9') {
+        e.preventDefault();
+        handleGenerate();
+        return;
+      }
+
+      // 3. Alt + S or '/' (when not typing in an input): Focus Product Search
+      if ((e.altKey && (e.key === 's' || e.key === 'S')) || (!isInput && e.key === '/')) {
+        e.preventDefault();
+        if (mobileTab !== 'products') setMobileTab('products');
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+
+      // 4. Alt + C: Focus Customer Details (Name or Mobile)
+      if (e.altKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+        if (mobileTab !== 'bill') setMobileTab('bill');
+        setShowCustomerDetails(true);
+        setTimeout(() => {
+          if (!customer.name.trim()) {
+            customerNameRef.current?.focus();
+          } else {
+            customerMobileRef.current?.focus();
+          }
+        }, 60);
+        return;
+      }
+
+      // 5. Alt + N: Quick Add New Product Modal
+      if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+        e.preventDefault();
+        openAddProduct();
+        return;
+      }
+
+      // 6. Alt + K or Alt + O: Toggle Old Metal Exchange
+      if (e.altKey && (e.key === 'k' || e.key === 'K' || e.key === 'o' || e.key === 'O')) {
+        e.preventDefault();
+        if (mobileTab !== 'bill') setMobileTab('bill');
+        setExchangeEnabled(prev => !prev);
+        return;
+      }
+
+      // 7. Alt + 1/2/3/4: Quick Payment Mode Switch
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key === '1') {
+          e.preventDefault();
+          setPaymentMethod('Cash');
+          return;
+        }
+        if (e.key === '2') {
+          e.preventDefault();
+          setPaymentMethod('UPI');
+          return;
+        }
+        if (e.key === '3') {
+          e.preventDefault();
+          setPaymentMethod('Card');
+          return;
+        }
+        if (e.key === '4') {
+          e.preventDefault();
+          setPaymentMethod('Split');
+          return;
+        }
+      }
+
+      // 8. Escape: Context-aware dismiss / cancel
+      if (e.key === 'Escape') {
+        if (showAddProduct) {
+          e.preventDefault();
+          setShowAddProduct(false);
+          return;
+        }
+        if (localPreviewBill) {
+          e.preventDefault();
+          setLocalPreviewBill(null);
+          return;
+        }
+        if (searchQuery) {
+          e.preventDefault();
+          setSearchQuery('');
+          searchRef.current?.blur();
+          return;
+        }
+      }
+
+      // 9. Barcode Scanner rapid buffer support (when not typing in an input)
+      if (!isInput) {
+        if (e.key === 'Enter' && barcodeBuffer.length > 3) {
+          const found = products.find(p => p.barcode === barcodeBuffer || p.id === barcodeBuffer);
+          if (found) addToCart(found);
+          setBarcodeBuffer('');
+          return;
+        }
+        if (e.key.length === 1 && !e.ctrlKey && !e.altKey) {
+          clearTimeout(barcodeTimer.current);
+          setBarcodeBuffer(prev => prev + e.key);
+          barcodeTimer.current = setTimeout(() => setBarcodeBuffer(''), 300);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [barcodeBuffer, products, mobileTab, customer, showAddProduct, localPreviewBill, searchQuery, handleGenerate]);
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 animate-fade-in relative w-full max-w-full min-w-0">
@@ -541,8 +863,8 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
         </div>
       )}
 
-      {/* Mobile Tab Switcher (Visible only on screens < 1024px) */}
-      <div className="lg:hidden flex bg-gray-100 p-1 rounded-2xl border border-gray-200">
+      {/* Mobile Tab Switcher (Visible only on screens < 1024px, sticky for smooth navigation) */}
+      <div className="lg:hidden sticky top-2 z-20 flex bg-gray-100/95 backdrop-blur-md p-1 rounded-2xl border border-gray-200 shadow-xs">
         <button
           type="button"
           onClick={() => setMobileTab('products')}
@@ -574,6 +896,34 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
           )}
         </button>
       </div>
+
+      {/* Edit Mode Banner */}
+      {editingBill && (
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 rounded-2xl shadow-md animate-fade-in border border-amber-400">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center font-bold">
+              <FileText size={20} />
+            </div>
+            <div>
+              <p className="font-bold text-base flex items-center gap-2">
+                <span>Editing Invoice:</span>
+                <span className="font-mono bg-white/20 px-2 py-0.5 rounded-lg">{editingBill.invoiceNumber}</span>
+              </p>
+              <p className="text-white/85 text-xs mt-0.5">
+                Customer: <strong className="text-white">{editingBill.customer?.name || 'Walk-in'}</strong> • Modify any details, items, or old metal exchange. Stock and revenue totals will automatically update upon saving.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onCancelEdit}
+            className="px-4 py-2 rounded-xl bg-white text-gray-800 hover:bg-amber-50 text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+          >
+            <X size={14} />
+            <span>Cancel Edit</span>
+          </button>
+        </div>
+      )}
 
       {success && (
         <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4 animate-fade-in">
@@ -607,9 +957,19 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_330px] xl:grid-cols-[1fr_370px] 2xl:grid-cols-[1fr_420px] gap-4 lg:gap-4 xl:gap-5 items-start w-full min-w-0">
+      <div
+        ref={splitContainerRef}
+        className={`flex flex-col lg:flex-row items-start w-full min-w-0 ${
+          isDraggingSplit ? 'select-none cursor-col-resize' : ''
+        }`}
+      >
         {/* ═══════════════ LEFT: Product List ═══════════════ */}
-        <div className={`space-y-4 min-w-0 lg:sticky lg:top-3 ${mobileTab === 'bill' ? 'hidden lg:block' : 'block'}`}>
+        <div
+          style={isLgScreen ? { width: `calc(${leftWidthPercent}% - 12px)`, flexShrink: 0 } : {}}
+          className={`space-y-4 min-w-0 w-full lg:sticky lg:top-3 ${
+            mobileTab === 'bill' ? 'hidden lg:block' : 'block'
+          }`}
+        >
           {/* Product Catalog */}
           <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
             {/* Header */}
@@ -623,9 +983,11 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
                 onClick={openAddProduct}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500
                   text-white text-xs font-semibold hover:from-amber-400 hover:to-orange-400 transition-all shadow-sm active:scale-95"
+                title="Add New Product (Alt+N)"
               >
                 <Plus size={13} />
                 <span>Add New</span>
+                <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[10px] font-mono font-bold bg-white/20 text-white rounded">Alt+N</kbd>
               </button>
             </div>
 
@@ -672,17 +1034,22 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder={`Search by ${searchType === 'barcode' ? 'HUID / Barcode' : searchType}...`}
-                  className="w-full border border-gray-200 rounded-xl pl-9 pr-9 py-2 text-gray-800 text-base sm:text-sm
+                  placeholder={`Search by ${searchType === 'barcode' ? 'HUID / Barcode' : searchType}... (Alt+S or /)`}
+                  className="w-full border border-gray-200 rounded-xl pl-9 pr-16 py-2 text-gray-800 text-base sm:text-sm
                     placeholder-gray-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all bg-white"
                 />
-                {searchQuery && (
+                {searchQuery ? (
                   <button
                     onClick={() => setSearchQuery('')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    title="Clear Search"
                   >
                     <X size={14} />
                   </button>
+                ) : (
+                  <span className="hidden sm:flex items-center gap-1 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[10px] text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded shadow-2xs font-mono font-semibold">
+                    Alt+S
+                  </span>
                 )}
               </div>
 
@@ -726,7 +1093,14 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
                   return (
                     <div
                       key={pid}
+                      draggable={!outOfStock}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', JSON.stringify({ productId: pid }));
+                        e.dataTransfer.effectAllowed = 'copy';
+                      }}
                       className={`flex items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 transition-all ${
+                        !outOfStock ? 'cursor-grab active:cursor-grabbing' : ''
+                      } ${
                         outOfStock
                           ? 'opacity-50 bg-gray-50/60'
                           : inBill
@@ -808,12 +1182,68 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
           </div>
         </div>
 
+        {/* ── Draggable Splitter Divider Handle (Desktop) ── */}
+        <div
+          onMouseDown={() => setIsDraggingSplit(true)}
+          onTouchStart={() => setIsDraggingSplit(true)}
+          onDoubleClick={() => setLeftWidthPercent(50)}
+          className={`hidden lg:flex w-6 shrink-0 flex-col items-center justify-center cursor-col-resize select-none relative z-20 group self-stretch min-h-[500px] transition-all px-1 ${
+            isDraggingSplit ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+          }`}
+          title="Drag left or right to resize sections. Double-click to reset to 50% / 50%."
+        >
+          {/* Vertical divider line */}
+          <div className={`w-[3px] h-full rounded-full transition-colors ${
+            isDraggingSplit ? 'bg-amber-500 shadow-sm' : 'bg-gray-200 group-hover:bg-amber-400'
+          }`} />
+
+          {/* Grab handle badge */}
+          <div className={`absolute top-1/3 -translate-y-1/2 w-6 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm border ${
+            isDraggingSplit
+              ? 'bg-amber-500 text-white border-amber-600 scale-110 shadow-amber-200'
+              : 'bg-white text-gray-400 border-gray-200 group-hover:text-amber-600 group-hover:border-amber-300 group-hover:scale-105'
+          }`}>
+            <GripVertical size={13} className="stroke-[2.5]" />
+          </div>
+
+          {/* Floating live percentage pill while dragging */}
+          {isDraggingSplit && (
+            <div className="absolute top-1/3 -translate-y-14 bg-gray-900 text-white text-[10px] font-mono font-bold px-2 py-1 rounded-md shadow-lg pointer-events-none whitespace-nowrap z-30 animate-fade-in">
+              {Math.round(leftWidthPercent)}% : {Math.round(100 - leftWidthPercent)}%
+            </div>
+          )}
+        </div>
+
         {/* ═══════════════ RIGHT: Unified Bill Panel ═══════════════ */}
         <div
           id="bill-panel"
-          className={`min-w-0 w-full bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col lg:sticky lg:top-3 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto ${
-            mobileTab === 'products' ? 'hidden lg:flex' : 'flex'
-          }`}
+          style={isLgScreen ? { width: `calc(${100 - leftWidthPercent}% - 12px)`, flexShrink: 0 } : {}}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            if (!isDragOverBill) setIsDragOverBill(true);
+          }}
+          onDragLeave={() => setIsDragOverBill(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragOverBill(false);
+            try {
+              const raw = e.dataTransfer.getData('text/plain');
+              if (raw) {
+                const data = JSON.parse(raw);
+                const prod = products.find(p => (p._id || p.id) === data.productId);
+                if (prod && prod.stock > 0) {
+                  addToBill(prod);
+                  showToast(`Added ${prod.name} to bill!`);
+                }
+              }
+            } catch (err) {
+              console.error('Drop error:', err);
+            }
+          }}
+          className={`min-w-0 w-full bg-white border rounded-2xl shadow-sm overflow-hidden flex flex-col lg:sticky lg:top-3 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto transition-all ${
+            isDragOverBill ? 'border-amber-400 ring-4 ring-amber-100 bg-amber-50/20' : 'border-gray-200'
+          } ${mobileTab === 'products' ? 'hidden lg:flex' : 'flex'}`}
         >
           {/* Mobile Back Button (Only on < lg screens when viewing bill) */}
           <div className="lg:hidden px-4 pt-3.5 pb-2 bg-amber-50/50 border-b border-amber-100 flex items-center justify-between">
@@ -835,6 +1265,7 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
               <p className="text-gray-700 font-bold flex items-center gap-2 text-sm">
                 <User size={15} className="text-amber-500" />
                 <span>Customer Details</span>
+                <kbd className="text-[10px] font-mono text-gray-400 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded font-semibold ml-1">Alt+C</kbd>
               </p>
               <button
                 type="button"
@@ -851,70 +1282,73 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
 
             {isCustomerDetailsExpanded ? (
               <div className="space-y-3 animate-fade-in">
-                {/* Name */}
-                <div>
-                  <label className="text-xs text-gray-500 font-semibold mb-1 block">Customer Name *</label>
-                  <input
-                    ref={customerNameRef}
-                    type="text"
-                    value={customer.name}
-                    onChange={e => {
-                      setCustomer(p => ({ ...p, name: e.target.value }));
-                      if (fieldErrors.name && e.target.value.trim()) {
-                        setFieldErrors(p => ({ ...p, name: false }));
-                        setFormError('');
-                      }
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        customerMobileRef.current?.focus();
-                      }
-                    }}
-                    placeholder="Enter customer name"
-                    className={`w-full border rounded-xl px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 transition-all bg-gray-50/70 focus:outline-none ${
-                      fieldErrors.name
-                        ? 'border-red-400 ring-2 ring-red-100 bg-red-50/20'
-                        : 'border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100'
-                    }`}
-                  />
-                  {fieldErrors.name && (
-                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium animate-fade-in">
-                      <AlertCircle size={12} className="shrink-0" />
-                      Customer name is required
-                    </p>
-                  )}
-                </div>
+                {/* Name & Mobile in 2 columns on spacious screens, 1 col when split-screen on lg */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
+                  {/* Name */}
+                  <div>
+                    <label className="text-xs text-gray-500 font-semibold mb-1 block">Customer Name *</label>
+                    <input
+                      ref={customerNameRef}
+                      type="text"
+                      value={customer.name}
+                      onChange={e => {
+                        setCustomer(p => ({ ...p, name: e.target.value }));
+                        if (fieldErrors.name && e.target.value.trim()) {
+                          setFieldErrors(p => ({ ...p, name: false }));
+                          setFormError('');
+                        }
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          customerMobileRef.current?.focus();
+                        }
+                      }}
+                      placeholder="Enter customer name"
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 transition-all bg-gray-50/70 focus:outline-none ${
+                        fieldErrors.name
+                          ? 'border-red-400 ring-2 ring-red-100 bg-red-50/20'
+                          : 'border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100'
+                      }`}
+                    />
+                    {fieldErrors.name && (
+                      <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium animate-fade-in">
+                        <AlertCircle size={12} className="shrink-0" />
+                        Customer name is required
+                      </p>
+                    )}
+                  </div>
 
-                {/* Mobile */}
-                <div>
-                  <label className="text-xs text-gray-500 font-semibold mb-1 block">Mobile Number *</label>
-                  <input
-                    ref={customerMobileRef}
-                    type="tel"
-                    value={customer.mobile}
-                    onChange={e => {
-                      const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      setCustomer(p => ({ ...p, mobile: digits }));
-                      if (fieldErrors.mobile && digits.length >= 10) {
-                        setFieldErrors(p => ({ ...p, mobile: false }));
-                        setFormError('');
-                      }
-                    }}
-                    placeholder="10-digit mobile number"
-                    maxLength={10}
-                    className={`w-full border rounded-xl px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 transition-all bg-gray-50/70 focus:outline-none ${
-                      fieldErrors.mobile
-                        ? 'border-red-400 ring-2 ring-red-100 bg-red-50/20'
-                        : 'border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100'
-                    }`}
-                  />
-                  {fieldErrors.mobile && (
-                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium animate-fade-in">
-                      <AlertCircle size={12} className="shrink-0" />
-                      Valid 10-digit number required
-                    </p>
-                  )}
+                  {/* Mobile */}
+                  <div>
+                    <label className="text-xs text-gray-500 font-semibold mb-1 block">Mobile Number *</label>
+                    <input
+                      ref={customerMobileRef}
+                      type="tel"
+                      value={customer.mobile}
+                      onChange={e => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setCustomer(p => ({ ...p, mobile: digits }));
+                        if (fieldErrors.mobile && digits.length >= 10) {
+                          setFieldErrors(p => ({ ...p, mobile: false }));
+                          setFormError('');
+                        }
+                      }}
+                      placeholder="10-digit mobile number"
+                      maxLength={10}
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 transition-all bg-gray-50/70 focus:outline-none ${
+                        fieldErrors.mobile
+                          ? 'border-red-400 ring-2 ring-red-100 bg-red-50/20'
+                          : 'border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100'
+                      }`}
+                    />
+                    {fieldErrors.mobile && (
+                      <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium animate-fade-in">
+                        <AlertCircle size={12} className="shrink-0" />
+                        Valid 10-digit number required
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Address */}
@@ -972,7 +1406,11 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
               </p>
               {billItems.length > 0 && (
                 <button
-                  onClick={() => setBillItems([])}
+                  onClick={() => {
+                    setBillItems([]);
+                    setExchangeEnabled(false);
+                    setExchangeForm({ ...emptyExchangeForm, rate: goldRate || 7500 });
+                  }}
                   className="text-xs text-red-500 hover:text-red-700 font-medium hover:underline flex items-center gap-1"
                 >
                   <Trash2 size={11} />
@@ -1041,6 +1479,172 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
             )}
           </div>
 
+          {/* ── Section 2.5: Dedicated Old Gold / Silver Exchange (பழைய நகை வரவு) ── */}
+          <div className="px-5 py-3.5 border-b border-gray-100 bg-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold shrink-0">
+                  <RefreshCw size={13} className="text-amber-700 stroke-[2.2]" />
+                </span>
+                <div>
+                  <p className="text-gray-800 font-bold text-xs sm:text-sm flex items-center gap-1.5">
+                    <span>Old Metal Exchange</span>
+                    <kbd className="text-[10px] font-mono text-amber-700 bg-amber-100/80 border border-amber-300 px-1.5 py-0.2 rounded font-semibold">Alt+K</kbd>
+                  </p>
+                  <p className="text-[10px] text-gray-400">பழைய தங்கம் / வெள்ளி வரவு</p>
+                </div>
+              </div>
+              {exchangeEnabled ? (
+                <button
+                  type="button"
+                  onClick={handleCloseExchange}
+                  className="px-3 py-1 rounded-xl text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 hover:text-rose-700 hover:border-rose-300 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                  title="Close and remove old metal exchange"
+                >
+                  <X size={13} className="stroke-[2.5]" />
+                  <span>Close</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setExchangeEnabled(true)}
+                  className="px-3 py-1 rounded-xl text-xs font-bold transition-all border shadow-xs select-none flex items-center gap-1.5 bg-gray-50 text-gray-600 border-gray-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300 cursor-pointer"
+                >
+                  <span className="w-2 h-2 rounded-full bg-gray-400" />
+                  + Add Old Metal
+                </button>
+              )}
+            </div>
+
+            {exchangeEnabled && (
+              <div className="space-y-3 bg-amber-50/50 border border-amber-200/80 rounded-2xl p-3.5 animate-fade-in mt-2">
+                {/* Metal Type & Purity */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex gap-1 bg-white p-1 rounded-xl border border-gray-200 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleExchangeMetalChange('gold')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        exchangeForm.metalType === 'gold' ? 'bg-amber-500 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Coins size={13} className="stroke-[2.2]" />
+                      <span>Gold</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExchangeMetalChange('silver')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        exchangeForm.metalType === 'silver' ? 'bg-slate-700 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Sparkles size={13} className="stroke-[2.2]" />
+                      <span>Silver</span>
+                    </button>
+                  </div>
+
+                  <select
+                    value={exchangeForm.purity}
+                    onChange={e => setExchangeForm(p => ({ ...p, purity: e.target.value }))}
+                    className="border border-gray-200 rounded-xl px-2.5 py-1 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-amber-400"
+                  >
+                    {exchangeForm.metalType === 'gold' ? (
+                      <>
+                        <option value="22K">22K (916 Hallmarked)</option>
+                        <option value="24K">24K (Pure Gold)</option>
+                        <option value="18K">18K (750 Gold)</option>
+                        <option value="KDM">KDM / Traditional</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Silver">Silver (92.5 / Articles)</option>
+                        <option value="Fine Silver">Fine Silver (99.9)</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {/* Weights & Rate Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4 gap-2 text-xs">
+                  <div>
+                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Gross Wt (g) *</label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      placeholder="0.000"
+                      value={exchangeForm.grossWeight}
+                      onChange={e => setExchangeForm(p => ({ ...p, grossWeight: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-800 font-mono font-semibold focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Stone/Dust Loss (g)</label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      placeholder="0.000"
+                      value={exchangeForm.meltingLoss}
+                      onChange={e => setExchangeForm(p => ({ ...p, meltingLoss: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-800 font-mono focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Net Wt (g)</label>
+                    <div className="border border-gray-200 rounded-lg px-2 py-1.5 bg-gray-100 text-gray-800 font-mono font-bold truncate">
+                      {exchangeNetWeight.toFixed(3)}g
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Rate (₹/g) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Rate"
+                      value={exchangeForm.rate}
+                      onChange={e => setExchangeForm(p => ({ ...p, rate: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-800 font-mono font-semibold focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Notes & Calculated Value */}
+                <div className="flex items-center justify-between pt-2 border-t border-amber-200/60 flex-wrap gap-2">
+                  <div className="flex-1 min-w-[150px]">
+                    <input
+                      type="text"
+                      placeholder="Notes (e.g. Old bangles, 1 stone removed)"
+                      value={exchangeForm.notes}
+                      onChange={e => setExchangeForm(p => ({ ...p, notes: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleCloseExchange}
+                      className="text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:underline flex items-center gap-1 cursor-pointer"
+                      title="Cancel and remove old metal exchange"
+                    >
+                      <X size={12} className="stroke-[2.5]" />
+                      Remove
+                    </button>
+                    <div className="text-right">
+                      <span className="text-[10px] text-amber-800/80 font-bold uppercase tracking-wider block">Exchange Value</span>
+                      <p className="text-emerald-700 font-black font-mono text-sm sm:text-base">
+                        - {formatCurrency(exchangeAmount)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* ── Section 3: Bill Summary ── */}
           <div className="px-5 py-4 border-b border-gray-100 bg-amber-50/40">
             <div className="flex items-center justify-between mb-3">
@@ -1092,6 +1696,12 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
                     <span className="font-mono">- {formatCurrency(discountAmount)}</span>
                   </div>
                 )}
+                {exchangeAmount > 0 && (
+                  <div className="flex justify-between text-amber-900 font-bold text-xs px-2 py-1 bg-amber-100/80 rounded-lg border border-amber-300">
+                    <span>Less : Old {exchangeForm.metalType === 'silver' ? 'Silver' : 'Gold'} Exchange ({exchangeNetWeight.toFixed(3)}g)</span>
+                    <span className="font-mono font-black text-amber-950">- {formatCurrency(exchangeAmount)}</span>
+                  </div>
+                )}
                 {roundOff !== 0 && (
                   <div className="flex justify-between text-gray-500 text-xs pl-2">
                     <span>Round off</span>
@@ -1135,21 +1745,21 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
             </div>
 
             {/* Payment Method */}
-            <div>
-              <label className="text-xs text-gray-500 font-semibold mb-2 block">Payment Method</label>
+            <div className="space-y-1.5">
+              <label className="text-xs text-gray-500 font-semibold block">Payment Method</label>
               <div className="grid grid-cols-3 gap-2">
                 {PAYMENT_METHODS.map(method => (
                   <button
                     key={method}
                     type="button"
                     onClick={() => { setPaymentMethod(method); setFormError(''); }}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none text-center ${
                       paymentMethod === method
-                        ? 'bg-amber-500 text-white shadow-sm ring-2 ring-amber-300'
-                        : 'bg-gray-50 text-gray-700 border border-gray-200 hover:border-amber-300 hover:bg-amber-50/50'
+                        ? 'bg-amber-500 text-white shadow-sm ring-2 ring-amber-400/50'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-amber-300 hover:bg-amber-50/50'
                     }`}
                   >
-                    <span>{method}</span>
+                    <span className="whitespace-nowrap">{method}</span>
                   </button>
                 ))}
                 {/* Split Pay */}
@@ -1162,14 +1772,14 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
                       handleSplit5050();
                     }
                   }}
-                  className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`py-2 px-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none text-center ${
                     paymentMethod === 'Split'
-                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md ring-2 ring-amber-300'
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm ring-2 ring-amber-400/50'
                       : 'bg-amber-50/80 text-amber-800 border border-amber-200 hover:bg-amber-100'
                   }`}
                 >
-                  <SplitIcon size={13} />
-                  <span>Split Pay</span>
+                  <SplitIcon size={13} className="shrink-0" />
+                  <span className="whitespace-nowrap">Split Pay</span>
                 </button>
               </div>
             </div>
@@ -1297,37 +1907,75 @@ export default function BillingPage({ products, bills, currentStaff, onGenerateB
             )}
 
             {/* ── Action Buttons ── */}
-            <div className="space-y-2 pt-1">
-              {/* Generate Bill */}
-              <button
-                onClick={handleGenerate}
-                disabled={cartItems.length === 0 || generateLoading}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-base
-                  hover:from-amber-400 hover:to-orange-400 transition-all duration-200 shadow-lg shadow-amber-200
-                  active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed
-                  flex items-center justify-center gap-2"
-              >
-                {generateLoading ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Printer size={18} />
-                )}
-                {generateLoading ? 'Generating...' : 'Generate Bill (Tax Invoice)'}
-              </button>
+            <div className="space-y-2.5 pt-3 border-t border-gray-100">
+              {editingBill ? (
+                <>
+                  {/* Save & Update Invoice */}
+                  <button
+                    onClick={handleGenerate}
+                    disabled={cartItems.length === 0 || generateLoading}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold text-base
+                      hover:from-amber-500 hover:to-orange-500 transition-all duration-200 shadow-lg shadow-amber-200
+                      active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed
+                      flex items-center justify-center gap-2 cursor-pointer"
+                    title="Save & Update Invoice (Ctrl+Enter)"
+                  >
+                    {generateLoading ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Save size={18} className="shrink-0" />
+                    )}
+                    <span>{generateLoading ? 'Updating Invoice...' : 'Save & Update Invoice'}</span>
+                    <kbd className="px-2 py-0.5 bg-black/20 text-white rounded text-[11px] font-mono font-bold ml-1.5">Ctrl+Enter</kbd>
+                  </button>
 
-              {/* Rough Bill / Quotation */}
-              <button
-                type="button"
-                onClick={handleGenerateQuotation}
-                disabled={cartItems.length === 0}
-                className="w-full py-2.5 rounded-2xl bg-blue-50 border-2 border-blue-200 hover:bg-blue-100/80 text-blue-800 font-bold text-sm
-                  transition-all duration-200 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed
-                  flex items-center justify-center gap-2 shadow-sm"
-                title="Generate quotation estimate without deducting stock"
-              >
-                <FileText size={15} className="text-blue-600" />
-                Rough Bill / Quotation
-              </button>
+                  {/* Cancel Editing */}
+                  <button
+                    type="button"
+                    onClick={onCancelEdit}
+                    className="w-full py-2.5 px-4 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm
+                      transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 border border-gray-200 cursor-pointer"
+                  >
+                    <X size={15} />
+                    <span>Cancel Editing</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Generate Bill */}
+                  <button
+                    onClick={handleGenerate}
+                    disabled={cartItems.length === 0 || generateLoading}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-base
+                      hover:from-amber-400 hover:to-orange-400 transition-all duration-200 shadow-lg shadow-amber-200
+                      active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed
+                      flex items-center justify-center gap-2 cursor-pointer"
+                    title="Generate Tax Invoice (Ctrl+Enter or F9)"
+                  >
+                    {generateLoading ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Printer size={18} />
+                    )}
+                    <span>{generateLoading ? 'Generating...' : 'Generate Bill (Tax Invoice)'}</span>
+                    <kbd className="px-2 py-0.5 bg-black/20 text-white rounded text-[11px] font-mono font-bold ml-1.5">Ctrl+Enter</kbd>
+                  </button>
+
+                  {/* Rough Bill / Quotation */}
+                  <button
+                    type="button"
+                    onClick={handleGenerateQuotation}
+                    disabled={cartItems.length === 0}
+                    className="w-full py-2.5 rounded-2xl bg-blue-50 border-2 border-blue-200 hover:bg-blue-100/80 text-blue-800 font-bold text-sm
+                      transition-all duration-200 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed
+                      flex items-center justify-center gap-2 shadow-sm"
+                    title="Generate quotation estimate without deducting stock"
+                  >
+                    <FileText size={15} className="text-blue-600" />
+                    Rough Bill / Quotation
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

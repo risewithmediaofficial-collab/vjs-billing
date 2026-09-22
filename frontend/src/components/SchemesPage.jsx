@@ -2,19 +2,28 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, X, Calendar, User, Phone, MapPin,
   CreditCard, CheckCircle2, AlertCircle, TrendingUp, HelpCircle, Loader2, Printer, ChevronDown,
-  Sparkles, Gift, ShieldCheck, Award, BookOpen, Layers
+  Sparkles, Gift, ShieldCheck, Award, BookOpen, Layers, Info, Coins
 } from 'lucide-react';
-import { formatCurrency, formatDate, SHOP_INFO } from '../data.js';
+import {
+  formatCurrency, formatDate, SHOP_INFO,
+  SAVINGS_SCHEME_TERMS, SAVINGS_SCHEME_TAMIL_TERMS, SAVINGS_SCHEME_BENEFITS
+} from '../data.js';
 import useScrollLock from '../useScrollLock.js';
 
 /* ── Passbook Front: Card Cover, Customer Info & Payment Ledger with Manual Seal Boxes ── */
-function PassbookFront({ scheme, totalPaid, bonusAmt, estimatedMaturityValue, shopInfo, goldRate }) {
+function PassbookFront({ scheme, totalPaid, bonusAmt, estimatedMaturityValue, shopInfo, goldRate, silverRate }) {
   const totalMonths = scheme.totalMonths || 12;
+  const isSilver = scheme.metalType === 'silver' || scheme.schemeName?.toLowerCase().includes('silver');
+  const metalLabel = isSilver ? 'SILVER' : 'GOLD';
+  const lockedRate = isSilver
+    ? (scheme.silverRateAtEnrollment || silverRate || 0)
+    : (scheme.goldRateAtEnrollment || goldRate || 0);
+
   const planName = scheme.schemeType === 'classic_5_1'
     ? '5+1 Bonus Plan (Pay 5 Months, Get 1 Month Bonus)'
     : scheme.schemeType === 'classic_11_1'
       ? '11+1 Bonus Plan (Pay 11 Months, Get 1 Month Bonus)'
-      : `Gold Savings Scheme (${scheme.interestRate || 0}% Interest Plan)`;
+      : `${metalLabel} Savings Scheme (${scheme.interestRate || 0}% Interest Plan)`;
 
   return (
     <div className="bg-white text-gray-900 border border-gray-300 rounded-xl p-4 sm:p-5 shadow-sm max-w-[540px] mx-auto space-y-3 font-sans print:border-0 print:p-0 print:shadow-none">
@@ -22,7 +31,9 @@ function PassbookFront({ scheme, totalPaid, bonusAmt, estimatedMaturityValue, sh
       <div className="border-b-2 border-amber-500 pb-2.5 mb-2">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-2.5">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg shadow-sm shrink-0 border border-amber-400">
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm shrink-0 border ${
+              isSilver ? 'bg-gradient-to-br from-slate-500 to-slate-700 border-slate-400' : 'bg-gradient-to-br from-amber-500 to-amber-700 border-amber-400'
+            }`}>
               VJS
             </div>
             <div>
@@ -36,15 +47,17 @@ function PassbookFront({ scheme, totalPaid, bonusAmt, estimatedMaturityValue, sh
           <div className="text-right text-[10px] text-gray-600 shrink-0">
             <p className="font-semibold text-gray-700">GSTIN: {shopInfo.gstNumber}</p>
             <p>Ph: {shopInfo.phone}</p>
-            <p className="text-[9px] text-gray-400 mt-0.5">SAVINGS SCHEME PASSBOOK</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">{metalLabel} SAVINGS PASSBOOK</p>
           </div>
         </div>
       </div>
 
       {/* ── Title Banner ── */}
-      <div className="flex items-center justify-between px-3 py-1.5 rounded-md font-bold uppercase tracking-wider text-xs mb-2 bg-amber-100 text-amber-900 border border-amber-300">
+      <div className={`flex items-center justify-between px-3 py-1.5 rounded-md font-bold uppercase tracking-wider text-xs mb-2 border ${
+        isSilver ? 'bg-slate-100 text-slate-900 border-slate-300' : 'bg-amber-100 text-amber-900 border-amber-300'
+      }`}>
         <span className="flex items-center gap-2">
-          GOLD SAVINGS SCHEME PASSBOOK
+          {metalLabel} SAVINGS SCHEME PASSBOOK
         </span>
         <span className="text-[10px] font-medium lowercase italic text-gray-600">
           customer passbook & ledger
@@ -52,12 +65,15 @@ function PassbookFront({ scheme, totalPaid, bonusAmt, estimatedMaturityValue, sh
       </div>
 
       {/* ── Scheme Plan Banner ── */}
-      <div className="bg-amber-50/80 border border-amber-200 rounded-lg p-2 text-center shadow-xs">
+      <div className={`${isSilver ? 'bg-slate-50 border-slate-200' : 'bg-amber-50/80 border-amber-200'} border rounded-lg p-2 text-center shadow-xs`}>
         <p className="text-xs sm:text-sm font-bold text-gray-900">
-          Monthly Installment: <span className="font-mono font-extrabold text-amber-900">{formatCurrency(scheme.monthlyAmount)}</span> / month ({totalMonths} Months Scheme)
+          Monthly Installment: <span className={`font-mono font-extrabold ${isSilver ? 'text-slate-900' : 'text-amber-900'}`}>{formatCurrency(scheme.monthlyAmount)}</span> / month ({totalMonths} Months Scheme)
         </p>
-        <p className="text-[11px] font-semibold text-amber-800 mt-0.5">
+        <p className={`text-[11px] font-semibold ${isSilver ? 'text-slate-800' : 'text-amber-800'} mt-0.5`}>
           {planName}
+        </p>
+        <p className="text-[9.5px] font-bold text-amber-900 bg-amber-100/80 border border-amber-300 rounded px-2 py-0.5 mt-1 inline-block">
+          {isSilver ? '0% Wastage (சேதாரம் இல்லை) on Silver Jewellery | Not Eligible for Coins' : '11+1 Bonus Plan | Strictly Not Eligible for Coins'}
         </p>
       </div>
 
@@ -93,9 +109,23 @@ function PassbookFront({ scheme, totalPaid, bonusAmt, estimatedMaturityValue, sh
           </div>
 
           <div className="flex items-baseline gap-1.5">
+            <span className="font-bold text-gray-700 whitespace-nowrap">Enrolled Rate:</span>
+            <span className="font-mono font-bold text-gray-900 border-b border-dotted border-gray-400 flex-1 px-1">
+              ₹{lockedRate}/g ({metalLabel})
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-1.5">
             <span className="font-bold text-gray-700 whitespace-nowrap">Enrollment Date:</span>
             <span className="font-semibold text-gray-800 border-b border-dotted border-gray-400 flex-1 px-1">
               {formatDate(scheme.createdAt || scheme.enrolledAt)}
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-bold text-gray-700 whitespace-nowrap">Scheme Type:</span>
+            <span className="font-bold text-amber-800 border-b border-dotted border-gray-400 flex-1 px-1">
+              {metalLabel} 11+1 Scheme
             </span>
           </div>
         </div>
@@ -112,7 +142,7 @@ function PassbookFront({ scheme, totalPaid, bonusAmt, estimatedMaturityValue, sh
           </span>
         </div>
 
-        <div className="border border-gray-300 rounded-lg overflow-hidden shadow-xs bg-white">
+        <div className="border border-gray-300 rounded-lg overflow-hidden overflow-x-auto shadow-xs bg-white">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-amber-600 text-white font-bold text-[11px]">
@@ -208,7 +238,7 @@ function PassbookFront({ scheme, totalPaid, bonusAmt, estimatedMaturityValue, sh
 
 /* ── Passbook Back: Jewellery Scheme Content, Rules & Benefits ── */
 function PassbookBack({ scheme, shopInfo }) {
-  const totalMonths = scheme.totalMonths || 12;
+  const isSilver = scheme?.metalType === 'silver' || scheme?.schemeName?.toLowerCase().includes('silver');
 
   return (
     <div className="bg-white text-gray-900 border border-gray-300 rounded-xl p-4 sm:p-5 shadow-sm max-w-[540px] mx-auto space-y-3 font-sans print:border-0 print:p-0 print:shadow-none">
@@ -238,7 +268,7 @@ function PassbookBack({ scheme, shopInfo }) {
       {/* ── Title Banner ── */}
       <div className="flex items-center justify-between px-3 py-1.5 rounded-md font-bold uppercase tracking-wider text-xs mb-3 bg-amber-100 text-amber-900 border border-amber-300">
         <span className="flex items-center gap-2">
-          GOLD SAVINGS SCHEME — TERMS & BENEFITS
+          GOLD & SILVER SAVINGS SCHEME — TERMS & BENEFITS
         </span>
         <span className="text-[10px] font-medium lowercase italic text-gray-600">
           rules & customer privileges
@@ -257,38 +287,12 @@ function PassbookBack({ scheme, shopInfo }) {
           </div>
 
           <ol className="space-y-1.5 text-[9.5px] sm:text-[10px] leading-relaxed text-gray-800 list-none pl-0 font-['Noto_Sans_Tamil',sans-serif]">
-            <li className="flex items-start gap-1.5">
-              <span className="font-bold text-amber-700 shrink-0">1.</span>
-              <span><strong>திட்ட காலம் (Scheme Tenure):</strong> இத்திட்டம் {totalMonths} மாத தவணைகளைக் கொண்டது. ஒவ்வொரு மாதமும் குறிப்பிட்ட தவணை தவறாமல் செலுத்தப்பட வேண்டும்.</span>
-            </li>
-            <li className="flex items-start gap-1.5">
-              <span className="font-bold text-amber-700 shrink-0">2.</span>
-              <span><strong>தவணை செலுத்தும் நாள் (Due Date):</strong> பிரதி மாதம் 1 முதல் 10-ஆம் தேதிக்குள் மாதத் தவணைத் தொகை கட்டாயம் செலுத்தப்பட வேண்டும்.</span>
-            </li>
-            <li className="flex items-start gap-1.5">
-              <span className="font-bold text-amber-700 shrink-0">3.</span>
-              <span><strong>அட்டை கொண்டுவருதல் (Passbook Presentation):</strong> ஒவ்வொரு முறை தவணை செலுத்தும்போதும், முதிர்வில் நகை எடுக்கும்போதும் இந்த சேமிப்பு திட்ட பாஸ்புக் அட்டையை கட்டாயம் கொண்டுவர வேண்டும்.</span>
-            </li>
-            <li className="flex items-start gap-1.5">
-              <span className="font-bold text-amber-700 shrink-0">4.</span>
-              <span><strong>ஹால்மார்க் உத்தரவாதம் (Hallmark Guarantee):</strong> திட்ட முதிர்வில் 100% BIS 916 ஹால்மார்க் தங்க நகைகள் சிறப்பு செய்கூலி மற்றும் சேதார சலுகைகளுடன் வழங்கப்படும்.</span>
-            </li>
-            <li className="flex items-start gap-1.5">
-              <span className="font-bold text-amber-700 shrink-0">5.</span>
-              <span><strong>போனஸ் சலுகை (Bonus Benefit):</strong> அனைத்து தவணைகளையும் குறித்த காலத்தில் செலுத்தும் வாடிக்கையாளர்களுக்கு முதிர்வு நாளில் 1 மாத போனஸ் தொகை அல்லது வட்டி சலுகை வழங்கப்படும்.</span>
-            </li>
-            <li className="flex items-start gap-1.5">
-              <span className="font-bold text-amber-700 shrink-0">6.</span>
-              <span><strong>தங்க விலை நிர்ணயம் (Gold Rate Booking):</strong> தவணை செலுத்தும் தேதியில் உள்ள அன்றைய தங்க விலை நிலவரப்படி கணக்கில் வரவு வைக்கப்பட்டு பாதுகாப்பு அளிக்கப்படுகிறது.</span>
-            </li>
-            <li className="flex items-start gap-1.5">
-              <span className="font-bold text-amber-700 shrink-0">7.</span>
-              <span><strong>திட்ட விலகல் (Early Closure):</strong> தவிர்க்க முடியாத காரணத்தால் திட்டத்தை பாதியில் நிறுத்தினால், போனஸ் சலுகை இன்றி செலுத்திய தொகைக்கு மட்டும் அன்றைய மார்க்கெட் விலையில் நகைகள் தரப்படும்.</span>
-            </li>
-            <li className="flex items-start gap-1.5">
-              <span className="font-bold text-amber-700 shrink-0">8.</span>
-              <span><strong>நிர்வாக முடிவு (Disputes):</strong> திட்டத்தின் விதிமுறைகள் மற்றும் நிபந்தனைகள் குறித்த நிர்வாகத்தின் முடிவே இறுதியானது.</span>
-            </li>
+            {SAVINGS_SCHEME_TAMIL_TERMS.map(({ num, title, text }) => (
+              <li key={num} className="flex items-start gap-1.5">
+                <span className="font-bold text-amber-700 shrink-0">{num}.</span>
+                <span><strong>{title}:</strong> {text}</span>
+              </li>
+            ))}
           </ol>
         </div>
 
@@ -302,58 +306,39 @@ function PassbookBack({ scheme, shopInfo }) {
           </div>
 
           <div className="space-y-1.5 text-[9.5px] sm:text-[10px] font-['Noto_Sans_Tamil',sans-serif]">
-            {/* Benefit 1 */}
-            <div className="flex items-start gap-2 bg-white p-2 rounded-lg border border-gray-200">
-              <Award size={16} className="text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-gray-900 block font-bold">தங்க நாணயம் அல்லது ரொக்கப் போனஸ்</strong>
-                <span className="text-gray-700 leading-snug">திட்டம் முடிவில் முதிர்வு தொகையுடன் தூய 916 தங்க நாணயம் அல்லது கூடுதல் ரொக்கப் போனஸ் வழங்கப்படும்.</span>
+            {SAVINGS_SCHEME_BENEFITS.map((b, idx) => (
+              <div key={idx} className="flex items-start gap-2 bg-white p-2 rounded-lg border border-gray-200">
+                {idx === 0 && <Award size={16} className="text-amber-600 shrink-0 mt-0.5" />}
+                {idx === 1 && <Sparkles size={16} className="text-emerald-600 shrink-0 mt-0.5" />}
+                {idx === 2 && <ShieldCheck size={16} className="text-blue-600 shrink-0 mt-0.5" />}
+                {idx === 3 && <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />}
+                {idx === 4 && <Gift size={16} className="text-purple-600 shrink-0 mt-0.5" />}
+                {idx === 5 && <Phone size={16} className="text-cyan-600 shrink-0 mt-0.5" />}
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <strong className="text-gray-900 block font-bold">{b.title}</strong>
+                    <span className="text-[9px] px-1.5 py-0.2 bg-amber-50 text-amber-800 border border-amber-200 rounded font-semibold shrink-0">
+                      {b.badge}
+                    </span>
+                  </div>
+                  <span className="text-gray-700 leading-snug block mt-0.5">{b.text}</span>
+                </div>
               </div>
-            </div>
-
-            {/* Benefit 2 */}
-            <div className="flex items-start gap-2 bg-white p-2 rounded-lg border border-gray-200">
-              <ShieldCheck size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-gray-900 block font-bold">100% BIS 916 ஹால்மார்க் தங்க நகைகள்</strong>
-                <span className="text-gray-700 leading-snug">மத்திய அரசு அங்கீகாரம் பெற்ற உயர்தர HUID 916 ஹால்மார்க் நகைகள் மட்டுமே முழு உத்தரவாதத்துடன் வழங்கப்படும்.</span>
-              </div>
-            </div>
-
-            {/* Benefit 3 */}
-            <div className="flex items-start gap-2 bg-white p-2 rounded-lg border border-gray-200">
-              <Sparkles size={16} className="text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-gray-900 block font-bold">சிறப்பு செய்கூலி & சேதாரம் தள்ளுபடி</strong>
-                <span className="text-gray-700 leading-snug">திட்ட வாடிக்கையாளர்களுக்கு பிரத்யேகமாக செய்கூலி மற்றும் சேதாரத்தில் (VA) உச்சபட்ச தள்ளுபடி சலுகை உண்டு.</span>
-              </div>
-            </div>
-
-            {/* Benefit 4 */}
-            <div className="flex items-start gap-2 bg-white p-2 rounded-lg border border-gray-200">
-              <Gift size={16} className="text-rose-500 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-gray-900 block font-bold">தீபாவளி & பண்டிகை சிறப்பு பரிசுகள்</strong>
-                <span className="text-gray-700 leading-snug">தீபாவளி மற்றும் விசேஷ பண்டிகைகளில் இனிப்புப் பெட்டி மற்றும் சிறப்பு வீட்டு உபயோக பரிசுப் பொருட்கள் வழங்கப்படும்.</span>
-              </div>
-            </div>
-
-            {/* Benefit 5 */}
-            <div className="flex items-start gap-2 bg-white p-2 rounded-lg border border-gray-200">
-              <Phone size={16} className="text-blue-600 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-gray-900 block font-bold">டிஜிட்டல் ரசீது & எஸ்.எம்.எஸ் எச்சரிக்கை</strong>
-                <span className="text-gray-700 leading-snug">ஒவ்வொரு தவணைக்கும் உடனடி கணினி ரசீது மற்றும் மொபைல் எஸ்.எம்.எஸ் / வாட்ஸ்அப் பதிவு அனுப்பி வைக்கப்படும்.</span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
 
+      {/* ── Key Highlight Notice Bar ── */}
+      <div className="bg-amber-50 border border-amber-300 rounded-lg p-2 text-center text-[10px] font-bold text-amber-900 space-y-0.5 font-['Noto_Sans_Tamil',sans-serif]">
+        <p>வெள்ளி சேமிப்பு திட்டத்தில் சேதாரம் (0% VA) முற்றிலும் இலவசம்!</p>
+        <p className="text-rose-800 font-extrabold">தங்கம் மற்றும் வெள்ளி இரு திட்டங்களிலும் நாணயங்கள் (Coins) பெற இயலாது; அழகு ஆபரண நகைகள் மட்டுமே பெறலாம்.</p>
+      </div>
+
       {/* ── Footer Motto & Contact Info ── */}
-      <div className="pt-2.5 border-t border-gray-200 text-center space-y-1">
+      <div className="pt-2 border-t border-gray-200 text-center space-y-1">
         <p className="font-bold text-xs text-amber-900 font-['Noto_Sans_Tamil',sans-serif]">
-          “எங்கள் தங்க சேமிப்புத் திட்டத்தில் இணைந்து உங்கள் எதிர்காலத்தை பொன்னாக்குங்கள்!”
+          “எங்கள் தங்கம் & வெள்ளி சேமிப்புத் திட்டத்தில் இணைந்து உங்கள் எதிர்காலத்தை பொன்னாக்குங்கள்!”
         </p>
 
         <div className="border border-gray-200 bg-gray-50 rounded-lg p-2 text-xs text-gray-700">
@@ -370,8 +355,188 @@ function PassbookBack({ scheme, shopInfo }) {
   );
 }
 
+/* ── Scheme Terms & Conditions Interactive Modal ── */
+function SchemeTermsModal({ onClose, shopInfo = {} }) {
+  const handlePrint = () => {
+    const printContent = document.getElementById('scheme-terms-modal-print-area').innerHTML;
+    const w = window.open('', '_blank');
+    w.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Savings Scheme Terms & Conditions - ${shopInfo?.name || 'VJS Jewellery'}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Tamil:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Inter', 'Noto Sans Tamil', -apple-system, sans-serif;
+            background: #fff;
+            color: #111827;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          @page { size: A4 portrait; margin: 8mm; }
+          @media print { .no-print { display: none !important; } }
+        </style>
+      </head>
+      <body>
+        <div class="p-3 max-w-[760px] mx-auto">
+          ${printContent}
+        </div>
+      </body>
+      </html>
+    `);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 500);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="w-full max-w-4xl bg-white rounded-2xl p-4 sm:p-6 shadow-2xl border border-gray-200 animate-fade-in my-auto max-h-[90vh] flex flex-col">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-gray-200 gap-3 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold shadow-sm shrink-0">
+              <BookOpen size={20} />
+            </div>
+            <div>
+              <h2 className="text-gray-900 font-extrabold text-base sm:text-lg">
+                Gold & Silver Savings Schemes — Terms & Benefits
+              </h2>
+              <p className="text-gray-500 text-xs mt-0.5">
+                விதிமுறைகள், நிபந்தனைகள் & வாடிக்கையாளர் சலுகைகள் (Customer Rules & Privileges)
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handlePrint}
+              className="py-1.5 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+            >
+              <Printer size={14} /> Print Rules
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Highlight Callouts */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-3 shrink-0">
+          <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2">
+            <Sparkles className="text-amber-600 shrink-0 mt-0.5" size={16} />
+            <div>
+              <p className="text-xs font-bold text-amber-900">Gold & Silver 11+1</p>
+              <p className="text-[11px] text-amber-800 leading-tight mt-0.5">Pay 11 months, 12th month paid free as bonus by {shopInfo.name || 'VJS Jewellery'}.</p>
+            </div>
+          </div>
+          <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2">
+            <ShieldCheck className="text-emerald-600 shrink-0 mt-0.5" size={16} />
+            <div>
+              <p className="text-xs font-bold text-emerald-900">0% Wastage on Silver</p>
+              <p className="text-[11px] text-emerald-800 leading-tight mt-0.5">No wastage (சேதாரம் இல்லை) while claiming silver jewellery/articles!</p>
+            </div>
+          </div>
+          <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2">
+            <AlertCircle className="text-rose-600 shrink-0 mt-0.5" size={16} />
+            <div>
+              <p className="text-xs font-bold text-rose-900">Coins Not Eligible</p>
+              <p className="text-[11px] text-rose-800 leading-tight mt-0.5">Strictly not eligible for gold or silver coins (jewellery/articles only).</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable Printable Content */}
+        <div className="flex-1 overflow-y-auto pr-1">
+          <div id="scheme-terms-modal-print-area" className="space-y-4">
+            {/* Tamil Rules */}
+            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+              <h3 className="font-extrabold text-sm text-gray-900 font-['Noto_Sans_Tamil',sans-serif] mb-2.5 flex items-center gap-2">
+                <BookOpen size={16} className="text-amber-600" />
+                விதிமுறைகள் & நிபந்தனைகள் (Tamil Terms & Conditions)
+              </h3>
+              <ol className="space-y-2 text-xs text-gray-800 font-['Noto_Sans_Tamil',sans-serif] leading-relaxed">
+                {SAVINGS_SCHEME_TAMIL_TERMS.map(({ num, title, text }) => (
+                  <li key={num} className="flex items-start gap-2">
+                    <span className="font-bold text-amber-700 shrink-0">{num}.</span>
+                    <div>
+                      <strong className="text-gray-900">{title}:</strong> <span>{text}</span>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* English Rules */}
+            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+              <h3 className="font-extrabold text-sm text-gray-900 mb-2.5 flex items-center gap-2">
+                <Layers size={16} className="text-amber-600" />
+                English Terms & Conditions
+              </h3>
+              <ol className="space-y-2 text-xs text-gray-800 leading-relaxed">
+                {SAVINGS_SCHEME_TERMS.map(({ num, title, text }) => (
+                  <li key={num} className="flex items-start gap-2">
+                    <span className="font-bold text-amber-700 shrink-0">{num}.</span>
+                    <div>
+                      <strong className="text-gray-900">{title}:</strong> <span>{text}</span>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Benefits */}
+            <div className="border border-gray-200 rounded-xl p-4 bg-white">
+              <h3 className="font-extrabold text-sm text-gray-900 mb-3 flex items-center gap-2">
+                <Gift size={16} className="text-amber-600" />
+                Customer Privileges & Benefits (சலுகைகள்)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                {SAVINGS_SCHEME_BENEFITS.map((b, idx) => (
+                  <div key={idx} className="p-2.5 rounded-lg border border-gray-200 bg-gray-50/60 flex items-start gap-2">
+                    <Award size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <strong className="text-xs font-bold text-gray-900">{b.title}</strong>
+                        <span className="text-[9px] px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded font-semibold shrink-0">
+                          {b.badge}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-600 mt-0.5 leading-snug">{b.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="pt-3 border-t border-gray-200 flex items-center justify-between shrink-0 text-xs text-gray-500">
+          <span>{shopInfo.name || 'VJS Jewellery'} — Customer Savings Scheme Policy</span>
+          <button
+            onClick={onClose}
+            className="py-1.5 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs transition-all"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 /* ── Scheme Passbook / Receipt Modal Container ── */
-function SchemeReceipt({ scheme, onClose, goldRate }) {
+function SchemeReceipt({ scheme, onClose, goldRate, silverRate }) {
   const [viewSide, setViewSide] = useState('both'); // 'front', 'back', 'both'
   const shopInfo = SHOP_INFO || {};
 
@@ -439,7 +604,7 @@ function SchemeReceipt({ scheme, onClose, goldRate }) {
         <div className="flex items-center justify-between pb-3 border-b border-gray-200 gap-3">
           <div>
             <h2 className="text-gray-900 font-bold text-lg sm:text-xl">
-              Gold Savings Scheme Passbook & Receipt
+              Gold & Silver Savings Scheme Passbook & Receipt
             </h2>
             <p className="text-gray-500 text-xs mt-0.5">
               Customer passbook card, payment records & scheme terms
@@ -504,6 +669,7 @@ function SchemeReceipt({ scheme, onClose, goldRate }) {
                 estimatedMaturityValue={estimatedMaturityValue}
                 shopInfo={shopInfo}
                 goldRate={goldRate}
+                silverRate={silverRate}
               />
             )}
 
@@ -545,6 +711,7 @@ export default function SchemesPage({
   const [searchQuery, setSearchQuery] = useState('');
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [selectedScheme, setSelectedScheme] = useState(null);
   const [previewScheme, setPreviewScheme] = useState(null);
   const [expandedSchemes, setExpandedSchemes] = useState({});
@@ -559,13 +726,15 @@ export default function SchemesPage({
     customerName: '',
     customerPhone: '',
     customerAddress: '',
+    metalType: 'gold', // 'gold' | 'silver'
     schemeName: 'VJS Gold Savings Scheme',
-    schemeType: 'classic_11_1', // classic_11_1, interest_plan
+    schemeType: 'classic_11_1', // classic_11_1, classic_5_1
     monthlyAmount: '',
     totalMonths: 11,
     bonusMonths: 1,
     interestRate: 0,
     goldRateAtEnrollment: goldRate,
+    silverRateAtEnrollment: silverRate,
   });
 
   // Pay Form State
@@ -581,7 +750,7 @@ export default function SchemesPage({
   const [payLoading, setPayLoading] = useState(false);
 
   // Lock screen scroll when any scheme popup / modal / form is active
-  useScrollLock(showEnrollModal || showPayModal || !!confirmAction || !!previewScheme);
+  useScrollLock(showEnrollModal || showPayModal || showTermsModal || !!confirmAction || !!previewScheme);
 
   // Filtering enrollments
   const filteredSchemes = schemes.filter(s => {
@@ -638,13 +807,16 @@ export default function SchemesPage({
     try {
       setEnrollLoading(true);
       const is5Plus1 = enrollForm.schemeType === 'classic_5_1';
+      const isSilver = enrollForm.metalType === 'silver';
       const data = {
         ...enrollForm,
+        schemeName: isSilver ? 'VJS Silver Savings Scheme' : 'VJS Gold Savings Scheme',
         monthlyAmount: amt,
         totalMonths: is5Plus1 ? 5 : 11,
         bonusMonths: 1,
         interestRate: 0,
-        goldRateAtEnrollment: goldRate, // lock today's gold rate
+        goldRateAtEnrollment: goldRate || 0,
+        silverRateAtEnrollment: silverRate || 0,
         storeId: currentStore,
         payments: [],
       };
@@ -658,6 +830,7 @@ export default function SchemesPage({
         customerName: '',
         customerPhone: '',
         customerAddress: '',
+        metalType: 'gold',
         schemeName: 'VJS Gold Savings Scheme',
         schemeType: 'classic_11_1',
         monthlyAmount: '',
@@ -665,6 +838,7 @@ export default function SchemesPage({
         bonusMonths: 1,
         interestRate: 0,
         goldRateAtEnrollment: goldRate,
+        silverRateAtEnrollment: silverRate,
       });
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
@@ -734,18 +908,35 @@ export default function SchemesPage({
 
   return (
     <div className="space-y-6 animate-fade-in text-gray-800">
-      <div className="flex items-center justify-between">
+      {/* ── Top Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Gold Savings Schemes</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage monthly gold saving plans for customers</p>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-bold text-gray-800">Gold & Silver Savings Schemes</h1>
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+              11+1 Bonus Plan
+            </span>
+          </div>
+          <p className="text-gray-500 text-sm mt-1">
+            Manage monthly savings plans for Gold & Silver jewellery (11+1 & 5+1 schemes)
+          </p>
         </div>
-        <button
-          onClick={() => setShowEnrollModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg"
-        >
-          <Plus size={16} />
-          New Enrollment
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={() => setShowTermsModal(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs shadow-xs transition-all active:scale-95"
+          >
+            <BookOpen size={15} />
+            <span>Scheme Rules & Terms (விதிகள்)</span>
+          </button>
+          <button
+            onClick={() => setShowEnrollModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg active:scale-95"
+          >
+            <Plus size={16} />
+            New Enrollment
+          </button>
+        </div>
       </div>
 
       {success && (
@@ -802,6 +993,11 @@ export default function SchemesPage({
       {/* Schemes List View */}
       <div className="space-y-3">
         {filteredSchemes.map(scheme => {
+          const isSilver = scheme.metalType === 'silver' || scheme.schemeName?.toLowerCase().includes('silver');
+          const metalRate = isSilver
+            ? (scheme.silverRateAtEnrollment || scheme.goldRateAtEnrollment || silverRate || 0)
+            : (scheme.goldRateAtEnrollment || goldRate || 0);
+
           const totalPaid = scheme.payments.reduce((sum, p) => sum + p.amount, 0);
           const totalTarget = scheme.monthlyAmount * scheme.totalMonths;
           const progressPercent = Math.min((scheme.payments.length / scheme.totalMonths) * 100, 100);
@@ -826,16 +1022,18 @@ export default function SchemesPage({
               className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-amber-200 transition-all space-y-4"
             >
               {/* ── Top Main Row (List View) ── */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[minmax(220px,2fr)_minmax(180px,1.5fr)_minmax(160px,1.2fr)_auto] items-center gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[minmax(250px,1.8fr)_minmax(220px,1.4fr)_auto_auto] items-center gap-4 lg:gap-6">
                 
                 {/* 1. Customer Info */}
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-base shrink-0 shadow-xs">
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-base shrink-0 shadow-xs ${
+                    isSilver ? 'bg-gradient-to-br from-slate-500 to-slate-700' : 'bg-gradient-to-br from-amber-400 to-amber-600'
+                  }`}>
                     {(scheme.customerName || 'C').charAt(0).toUpperCase()}
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-gray-800 text-sm truncate">{scheme.customerName}</h3>
+                      <h3 className="font-bold text-gray-900 text-sm truncate">{scheme.customerName}</h3>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
                         scheme.status === 'active' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
                         scheme.status === 'redeemable' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse' :
@@ -847,15 +1045,26 @@ export default function SchemesPage({
                       }`}>
                         {scheme.status?.replace('_', ' ')}
                       </span>
+                      {isSilver ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider bg-slate-100 text-slate-700 border border-slate-300 inline-flex items-center gap-1">
+                          <Sparkles size={11} className="stroke-[2.2]" />
+                          <span>Silver (0% Wastage)</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider bg-amber-50 text-amber-800 border border-amber-300 inline-flex items-center gap-1">
+                          <Coins size={11} className="stroke-[2.2]" />
+                          <span>Gold</span>
+                        </span>
+                      )}
                     </div>
-                    <p className="text-gray-400 text-xs mt-0.5 flex items-center gap-1 font-mono">
+                    <p className="text-gray-400 text-xs flex items-center gap-1 font-mono">
                       <Phone size={11} className="text-gray-400" /> {scheme.customerPhone}
                     </p>
-                    <p className="text-amber-800/80 text-[11px] font-medium truncate mt-0.5">
-                      {scheme.schemeType === 'classic_5_1'
-                        ? `5+1 Bonus Plan (${scheme.totalMonths} mos)`
+                    <p className="text-amber-800/80 text-[11px] font-medium truncate">
+                      {isSilver ? 'Silver' : 'Gold'} {scheme.schemeType === 'classic_5_1'
+                        ? `5+1 Plan (${scheme.totalMonths} mos)`
                         : scheme.schemeType === 'classic_11_1'
-                          ? `11+1 Bonus Plan (${scheme.totalMonths} mos)` 
+                          ? `11+1 Plan (${scheme.totalMonths} mos)` 
                           : `Interest Plan (${scheme.interestRate || 0}%, ${scheme.totalMonths} mos)`}
                     </p>
                   </div>
@@ -863,33 +1072,29 @@ export default function SchemesPage({
 
                 {/* 2. Progress */}
                 <div className="min-w-0 space-y-1.5">
-                  <div className="flex justify-between text-xs text-gray-600 font-medium">
-                    <span>Installment Progress</span>
-                    <span className="font-bold text-amber-800">{scheme.payments.length} / {scheme.totalMonths} paid</span>
+                  <div className="flex items-center justify-between text-xs font-medium">
+                    <span className="text-gray-600">Installment Progress</span>
+                    <span className="font-bold text-amber-800 font-mono">{scheme.payments.length} / {scheme.totalMonths} paid</span>
                   </div>
                   <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden border border-gray-200/60">
                     <div 
-                      className="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all duration-300"
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        isSilver ? 'bg-gradient-to-r from-slate-500 to-slate-700' : 'bg-gradient-to-r from-amber-500 to-orange-500'
+                      }`}
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
-                  <p className="text-[11px] text-gray-400 font-medium">
-                    Monthly: <strong className="text-gray-700">{formatCurrency(scheme.monthlyAmount)}</strong>
+                  <p className="text-[11px] text-gray-500 font-medium">
+                    Monthly: <strong className="text-gray-700 font-mono">{formatCurrency(scheme.monthlyAmount)}</strong>
                   </p>
                 </div>
 
                 {/* 3. Financials */}
                 <div className="min-w-0 flex flex-col justify-center">
-                  <div className="flex items-center justify-between lg:justify-start lg:gap-4">
-                    <div>
-                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Paid</span>
-                      <p className="text-gray-900 font-extrabold text-sm sm:text-base font-mono">{formatCurrency(totalPaid)}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Bonus (at maturity)</span>
-                      <p className="text-emerald-600 font-extrabold text-sm sm:text-base font-mono">+{formatCurrency(bonusAmt)}</p>
-                    </div>
-                  </div>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Paid</span>
+                  <p className="text-gray-900 font-extrabold text-base sm:text-lg font-mono leading-tight mt-0.5 whitespace-nowrap">
+                    {formatCurrency(totalPaid)}
+                  </p>
                 </div>
 
                 {/* 4. Action Buttons & Show More Toggle */}
@@ -1004,7 +1209,7 @@ export default function SchemesPage({
                     <div className="bg-gray-50/80 rounded-xl p-3 border border-gray-100">
                       <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Scheme Model</span>
                       <p className="text-xs font-semibold text-gray-800 mt-1">
-                        {scheme.schemeType === 'classic_5_1'
+                        {isSilver ? 'Silver' : 'Gold'} {scheme.schemeType === 'classic_5_1'
                           ? `5+1 Bonus (${scheme.totalMonths} mos)`
                           : scheme.schemeType === 'classic_11_1'
                             ? `11+1 Bonus (${scheme.totalMonths} mos)` 
@@ -1013,8 +1218,10 @@ export default function SchemesPage({
                     </div>
 
                     <div className="bg-gray-50/80 rounded-xl p-3 border border-gray-100">
-                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Enrollment Gold Rate</span>
-                      <p className="text-xs font-semibold text-gray-800 mt-1 font-mono">₹{scheme.goldRateAtEnrollment}/g</p>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                        Enrollment {isSilver ? 'Silver' : 'Gold'} Rate
+                      </span>
+                      <p className="text-xs font-semibold text-gray-800 mt-1 font-mono">₹{metalRate}/g</p>
                     </div>
 
                     <div className="bg-gray-50/80 rounded-xl p-3 border border-gray-100">
@@ -1033,7 +1240,7 @@ export default function SchemesPage({
                     </div>
                   </div>
 
-                  {/* Customer Address & Enrollment Info */}
+                  {/* Customer Address & Enrollment Info & Terms Badge */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs text-gray-500">
                     {scheme.customerAddress && (
                       <p className="flex items-center gap-1 text-gray-500">
@@ -1041,9 +1248,14 @@ export default function SchemesPage({
                         <span>Address: {scheme.customerAddress}</span>
                       </p>
                     )}
-                    <p className="text-[11px] text-gray-400">
-                      Enrolled: {formatDate(scheme.createdAt || scheme.enrolledAt)}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[11px] font-semibold text-amber-900 bg-amber-50 border border-amber-200/80 rounded-lg px-2 py-0.5">
+                        {isSilver ? '0% Wastage on Silver Jewellery' : '100% BIS Hallmark Gold'} | Not Eligible for Coins
+                      </span>
+                      <p className="text-[11px] text-gray-400">
+                        Enrolled: {formatDate(scheme.createdAt || scheme.enrolledAt)}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Installments Payment History Table */}
@@ -1059,7 +1271,10 @@ export default function SchemesPage({
                             <span className="font-semibold text-gray-700">Month {p.monthIndex || (idx + 1)}</span>
                             <span className="text-gray-400 text-[11px]">{formatDate(p.date)}</span>
                             <span className="font-mono font-bold text-gray-900">{formatCurrency(p.amount)}</span>
-                            <span className="text-emerald-600 font-semibold text-[10px] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Paid ✓</span>
+                            <span className="text-emerald-600 font-semibold text-[10px] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                              <CheckCircle2 size={10} className="stroke-[2.5]" />
+                              <span>Paid</span>
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -1099,6 +1314,73 @@ export default function SchemesPage({
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
+                {/* Metal Type Selector (Gold vs Silver) */}
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 font-semibold mb-1.5 block uppercase tracking-wider">
+                    Savings Scheme Metal *
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEnrollForm(p => ({
+                        ...p,
+                        metalType: 'gold',
+                        schemeName: 'VJS Gold Savings Scheme'
+                      }))}
+                      className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${
+                        enrollForm.metalType === 'gold'
+                          ? 'bg-amber-50 border-amber-400 text-amber-900 shadow-sm ring-2 ring-amber-300'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                        Au
+                      </div>
+                      <div className="text-left">
+                        <span className="text-xs font-bold block">Gold Scheme</span>
+                        <span className="text-[11px] text-amber-800 font-mono font-bold">₹{goldRate}/g (Live)</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setEnrollForm(p => ({
+                        ...p,
+                        metalType: 'silver',
+                        schemeName: 'VJS Silver Savings Scheme'
+                      }))}
+                      className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer ${
+                        enrollForm.metalType === 'silver'
+                          ? 'bg-slate-100 border-slate-400 text-slate-900 shadow-sm ring-2 ring-slate-300'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-500 to-slate-700 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                        Ag
+                      </div>
+                      <div className="text-left">
+                        <span className="text-xs font-bold block">Silver Scheme</span>
+                        <span className="text-[11px] text-slate-800 font-mono font-bold">₹{silverRate}/g (Live)</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Metal-specific highlights */}
+                  <div className="mt-2 text-[11px] p-2 rounded-lg bg-amber-50/70 border border-amber-200">
+                    {enrollForm.metalType === 'silver' ? (
+                      <p className="text-slate-900 font-semibold flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-emerald-600 shrink-0" />
+                        <span><strong>Silver 11+1 Plan:</strong> 0% Wastage (சேதாரம் இல்லை) on silver jewellery! (Not eligible for coins).</span>
+                      </p>
+                    ) : (
+                      <p className="text-amber-900 font-semibold flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-amber-600 shrink-0" />
+                        <span><strong>Gold 11+1 Plan:</strong> Pay 11 months, 12th month bonus free. (Not eligible for coins).</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 {/* Customer Name */}
                 <div className="col-span-2">
                   <label className="text-xs text-gray-500 font-semibold mb-1 block uppercase tracking-wider">Customer Name *</label>
@@ -1140,20 +1422,24 @@ export default function SchemesPage({
                   />
                 </div>
 
-                {/* Locked Gold Rate */}
+                {/* Locked Metal Rate */}
                 <div>
-                  <label className="text-xs text-gray-500 font-semibold mb-1 block uppercase tracking-wider">Locked Gold Rate (₹/g)</label>
+                  <label className="text-xs text-gray-500 font-semibold mb-1 block uppercase tracking-wider">
+                    {enrollForm.metalType === 'silver' ? 'Locked Silver Rate (₹/g)' : 'Locked Gold Rate (₹/g)'}
+                  </label>
                   <input
                     type="text"
-                    value={`₹${goldRate}/g (Live)`}
+                    value={enrollForm.metalType === 'silver' ? `₹${silverRate}/g (Live Silver Rate)` : `₹${goldRate}/g (Live Gold Rate)`}
                     readOnly
-                    className="w-full border border-gray-200 bg-gray-100 rounded-xl px-4 py-2.5 text-gray-500 text-sm cursor-not-allowed"
+                    className="w-full border border-gray-200 bg-gray-100 rounded-xl px-4 py-2.5 text-gray-600 font-mono text-sm cursor-not-allowed"
                   />
                 </div>
 
                 {/* Scheme Type */}
-                <div className="col-span-2 space-y-3">
-                  <label className="text-xs text-gray-500 font-semibold block uppercase tracking-wider">Scheme Model</label>
+                <div className="col-span-2 space-y-2.5">
+                  <label className="text-xs text-gray-500 font-semibold block uppercase tracking-wider">
+                    Scheme Model ({enrollForm.metalType === 'silver' ? 'Silver' : 'Gold'})
+                  </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-200">
                     {/* Classic 11+1 */}
                     <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-xl border transition-all ${
@@ -1191,6 +1477,25 @@ export default function SchemesPage({
                       </div>
                     </label>
                   </div>
+                </div>
+
+                {/* Important Terms & Conditions Notice Box */}
+                <div className="col-span-2 bg-amber-50/90 border border-amber-300 rounded-xl p-3 text-xs space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-950">
+                    <AlertCircle size={14} className="text-amber-700 shrink-0" />
+                    <span>Key Terms & Conditions:</span>
+                  </div>
+                  <ul className="text-[11px] text-amber-900 leading-snug list-disc list-inside space-y-1 pl-1 font-medium">
+                    <li>
+                      <strong>Silver 11+1 Scheme:</strong> Same 11+1 scheme applies to silver articles with <strong>0% Wastage (சேதாரம் இல்லை / No VA)</strong> when claiming!
+                    </li>
+                    <li>
+                      <strong>Strict Coin Exclusion Policy:</strong> Both Gold and Silver schemes are <strong>strictly NOT eligible for purchasing Gold or Silver coins</strong> (jewellery & ornaments only).
+                    </li>
+                    <li>
+                      <strong>Installment Due Date:</strong> Pay promptly between the 1st and 10th of each month.
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -1332,6 +1637,15 @@ export default function SchemesPage({
           scheme={previewScheme}
           onClose={() => setPreviewScheme(null)}
           goldRate={goldRate}
+          silverRate={silverRate}
+        />
+      )}
+
+      {/* Scheme Terms & Conditions Interactive Modal */}
+      {showTermsModal && (
+        <SchemeTermsModal
+          onClose={() => setShowTermsModal(false)}
+          shopInfo={SHOP_INFO}
         />
       )}
     </div>

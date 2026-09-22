@@ -70,7 +70,25 @@ function BillContent({ bill, viewMode }) {
   }) || (!hasSilver);
 
   return (
-    <div id="bill-front-print-area" className="bg-white text-gray-900 font-sans text-xs max-w-[650px] mx-auto p-4 sm:p-6 border border-gray-300 shadow-sm print:shadow-none print:border-0 print:p-0">
+    <div id="bill-front-print-area" className="relative overflow-hidden bg-white text-gray-900 font-sans text-xs max-w-[650px] mx-auto p-4 sm:p-6 border border-gray-300 shadow-sm print:shadow-none print:border-0 print:p-0">
+      {/* Watermark Stamps if Refunded or Exchanged */}
+      {bill.status === 'refunded' && (
+        <div className="absolute top-28 right-6 sm:right-10 border-4 border-red-500/80 text-red-600 font-black text-base sm:text-lg px-3 sm:px-4 py-1.5 rounded-xl rotate-[-12deg] uppercase tracking-widest pointer-events-none select-none bg-red-50/80 z-10 shadow-sm text-center">
+          REFUNDED / திரும்பப் பெறப்பட்டது
+          <div className="text-[10px] tracking-normal font-semibold text-red-700 mt-0.5">
+            {bill.actionDate ? formatDate(bill.actionDate) : ''} {bill.actionReason ? `• ${bill.actionReason}` : ''}
+          </div>
+        </div>
+      )}
+      {bill.status === 'exchanged' && (
+        <div className="absolute top-28 right-6 sm:right-10 border-4 border-blue-600/80 text-blue-700 font-black text-base sm:text-lg px-3 sm:px-4 py-1.5 rounded-xl rotate-[-12deg] uppercase tracking-widest pointer-events-none select-none bg-blue-50/80 z-10 shadow-sm text-center">
+          EXCHANGED / மாற்றப்பட்டது
+          <div className="text-[10px] tracking-normal font-semibold text-blue-800 mt-0.5">
+            {bill.actionDate ? formatDate(bill.actionDate) : ''} {bill.actionReason ? `• ${bill.actionReason}` : ''}
+          </div>
+        </div>
+      )}
+
       {/* ── Top Header ─────────────────────────────────────────── */}
       <div className="border-b-2 border-amber-500 pb-3 mb-2">
         <div className="flex items-start justify-between">
@@ -262,8 +280,9 @@ function BillContent({ bill, viewMode }) {
               )}
               <div className="pt-2 text-[10px] text-gray-500">
                 <p>Staff: {bill.staffName || 'System Admin'}</p>
-                <div className="inline-block mt-1 px-2 py-0.5 rounded border border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-[9px] uppercase tracking-wide">
-                  ✓ Verified & Hallmarked
+                <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded border border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-[9px] uppercase tracking-wide">
+                  <CheckCircle2 size={10} className="stroke-[2.5]" />
+                  <span>Verified & Hallmarked</span>
                 </div>
               </div>
             </div>
@@ -293,6 +312,12 @@ function BillContent({ bill, viewMode }) {
                 <div className="flex justify-between text-emerald-700">
                   <span>Discount:</span>
                   <span className="font-mono">- {formatCurrency(discountAmount)}</span>
+                </div>
+              )}
+              {bill.exchangeDetails?.applied && bill.exchangeDetails?.totalDeduction > 0 && (
+                <div className="flex justify-between text-amber-900 font-semibold bg-amber-50/80 px-1 py-0.5 rounded border border-amber-200">
+                  <span>Less : Old {bill.exchangeDetails.metalType === 'silver' ? 'Silver' : 'Gold'} ({bill.exchangeDetails.netWeight}g @ ₹{(bill.exchangeDetails.rate || 0).toLocaleString('en-IN')}/g):</span>
+                  <span className="font-mono text-amber-950 font-bold">- {formatCurrency(bill.exchangeDetails.totalDeduction)}</span>
                 </div>
               )}
               <div className="border-t-2 border-gray-800 pt-1.5 mt-1.5 flex justify-between font-black text-sm text-gray-900">
@@ -332,6 +357,12 @@ function BillContent({ bill, viewMode }) {
                 <div className="flex justify-between text-emerald-700">
                   <span>Less : Discount:</span>
                   <span className="font-mono">- {formatCurrency(discountAmount)}</span>
+                </div>
+              )}
+              {bill.exchangeDetails?.applied && bill.exchangeDetails?.totalDeduction > 0 && (
+                <div className="flex justify-between text-amber-900 font-semibold bg-amber-50/80 px-1.5 py-0.5 rounded border border-amber-200">
+                  <span>Less : Old {bill.exchangeDetails.metalType === 'silver' ? 'Silver' : 'Gold'} Exchange ({bill.exchangeDetails.purity || '22K'} {bill.exchangeDetails.netWeight}g @ ₹{(bill.exchangeDetails.rate || 0).toLocaleString('en-IN')}/g):</span>
+                  <span className="font-mono text-amber-950 font-bold">- {formatCurrency(bill.exchangeDetails.totalDeduction)}</span>
                 </div>
               )}
               {roundOff !== 0 && (
@@ -500,7 +531,10 @@ export function BillBacksideTerms({ shopInfo = SHOP_INFO }) {
 
         {/* Footer Guarantee Seal */}
         <div className="pt-2 border-t border-gray-200 flex items-center justify-between text-[9px] text-gray-500">
-          <span className="font-semibold text-amber-700">✓ 100% BIS Hallmarked Jewellery</span>
+          <span className="font-semibold text-amber-700 inline-flex items-center gap-1">
+            <CheckCircle2 size={10} className="stroke-[2.5]" />
+            <span>100% BIS Hallmarked Jewellery</span>
+          </span>
           <span>Computerized Karatmeter Purity Assured</span>
         </div>
       </div>
@@ -746,8 +780,9 @@ export default function BillPreview({ bill, onClose }) {
         </div>
 
         {/* Bottom helper text */}
-        <p className="text-center text-gray-400 text-[11px] mt-3">
-          💡 You can view and print <b>Front Side</b>, <b>Back Side (Terms & Conditions in Tamil & English)</b>, or <b>Both Sides</b>.
+        <p className="text-center text-gray-400 text-[11px] mt-3 flex items-center justify-center gap-1.5">
+          <Sparkles size={12} className="text-amber-500 shrink-0" />
+          <span>You can view and print <b>Front Side</b>, <b>Back Side (Terms & Conditions in Tamil & English)</b>, or <b>Both Sides</b>.</span>
         </p>
       </div>
     </div>

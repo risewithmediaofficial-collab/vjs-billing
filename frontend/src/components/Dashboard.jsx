@@ -39,10 +39,12 @@ function StatCard({ title, value, subtitle, icon: Icon, color }) {
 
 export default function Dashboard({ bills, products, staff, currentStaff, onViewBill, activityLogs = [], onRefreshData }) {
   const isAdmin = currentStaff?.role === 'Admin';
+  const isQuotationBill = b => b.isRoughBill || b.billType === 'quotation' || b.invoiceNumber?.startsWith('EST-');
+  const activeTaxBills = bills.filter(b => !isQuotationBill(b) && b.status !== 'refunded' && b.status !== 'exchanged');
   const today = new Date().toDateString();
-  const todayBills = bills.filter(b => new Date(b.createdAt).toDateString() === today);
+  const todayBills = activeTaxBills.filter(b => new Date(b.createdAt).toDateString() === today);
   const todayRevenue = todayBills.reduce((sum, b) => sum + (b.totalAmount ?? b.finalTotal ?? 0), 0);
-  const totalRevenue = bills.reduce((sum, b) => sum + (b.totalAmount ?? b.finalTotal ?? 0), 0);
+  const totalRevenue = activeTaxBills.reduce((sum, b) => sum + (b.totalAmount ?? b.finalTotal ?? 0), 0);
   const lowStock = products.filter(p => p.stock <= 2);
   const recentBills = [...bills].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
 
@@ -187,50 +189,6 @@ export default function Dashboard({ bills, products, staff, currentStaff, onView
           </div>
         )}
       </div>
-
-      {/* Staff Activity Logs — ADMIN ONLY */}
-      {isAdmin && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-gray-800 font-bold text-base flex items-center gap-2">
-              <Users size={18} className="text-amber-500" />
-              Staff Activity Audit Trail
-            </h2>
-            {onRefreshData && (
-              <button
-                onClick={onRefreshData}
-                className="text-xs text-amber-600 hover:text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl font-bold transition-all shadow-sm flex items-center gap-1"
-              >
-                🔄 Refresh Logs
-              </button>
-            )}
-          </div>
-
-          {activityLogs.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
-              <Clock size={36} className="mx-auto mb-2 opacity-30" />
-              <p className="font-semibold text-sm">No activity logs recorded yet</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100 max-h-[350px] overflow-y-auto pr-2 space-y-3">
-              {activityLogs.slice(0, 15).map(log => (
-                <div key={log._id || log.id} className="pt-3 first:pt-0 flex items-start gap-3 text-xs">
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-250 flex items-center justify-center shrink-0 text-amber-700 font-bold">
-                    {log.staffName?.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-0.5">
-                      <span className="font-bold text-gray-800">{log.staffName}</span>
-                      <span className="text-[10px] text-gray-400">{new Date(log.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} • {new Date(log.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <p className="text-gray-650"><span className="font-bold text-amber-700">[{log.action}]</span> {log.details}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

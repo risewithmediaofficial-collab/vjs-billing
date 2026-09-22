@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Package, Plus, Edit3, Trash2, Search, X, Save,
   AlertTriangle, CheckCircle2, Barcode, Lock, Image as ImageIcon, Loader2,
@@ -29,6 +29,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
   const [imagePreview, setImagePreview] = useState(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // product id pending delete
+  const searchRef = useRef(null);
   const isAdminOrManager = currentStaff?.role === 'Admin' || currentStaff?.role === 'Manager';
 
   // Lock screen scroll when product modal form or delete confirmation is active
@@ -137,6 +138,63 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
     }
   };
 
+  // ── Keyboard Shortcuts for Inventory Page ─────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl?.tagName);
+
+      // 1. Alt + N or Insert: Add Product
+      if ((e.altKey && (e.key === 'n' || e.key === 'N')) || e.key === 'Insert') {
+        if (isAdminOrManager) {
+          e.preventDefault();
+          openAdd();
+          return;
+        }
+      }
+
+      // 2. Alt + S or / (when not typing in an input): Focus Search Bar
+      if ((e.altKey && (e.key === 's' || e.key === 'S')) || (!isInput && e.key === '/')) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+
+      // 3. Ctrl + Enter inside Add/Edit Form: Save Product
+      if (showForm && e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        handleSave();
+        return;
+      }
+
+      // 4. Escape: Close Form / Cancel Delete / Clear Search
+      if (e.key === 'Escape') {
+        if (showForm) {
+          e.preventDefault();
+          setShowForm(false);
+          setImagePreview(null);
+          setFormError('');
+          return;
+        }
+        if (deleteConfirm) {
+          e.preventDefault();
+          setDeleteConfirm(null);
+          return;
+        }
+        if (search) {
+          e.preventDefault();
+          setSearch('');
+          searchRef.current?.blur();
+          return;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showForm, deleteConfirm, search, isAdminOrManager, handleSave]);
+
 
   const stockBadge = (stock) => {
     if (stock === 0)  return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Out of Stock</span>;
@@ -163,9 +221,11 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
             <button
               onClick={openAdd}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg"
+              title="Add Product (Alt+N or Insert)"
             >
               <Plus size={16} />
-              Add Product
+              <span>Add Product</span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[10px] font-mono font-bold bg-white/20 text-white rounded ml-1">Alt+N</kbd>
             </button>
           )}
         </div>
@@ -178,7 +238,7 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 animate-fade-in">
             <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-amber-800 font-semibold text-sm">⚠️ Low Stock Alert</p>
+              <p className="text-amber-800 font-semibold text-sm">Low Stock Alert</p>
               <p className="text-amber-700 text-xs mt-0.5">
                 {lowList.length} item{lowList.length !== 1 ? 's are' : ' is'} running low:{' '}
                 <span className="font-medium">{lowList.map(p => `${p.name} (${p.stock})`).join(', ')}</span>
@@ -244,13 +304,26 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
       <div className="relative">
         <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
+          ref={searchRef}
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name, ID, HUID No or category..."
-          className="w-full border border-gray-200 bg-white rounded-xl pl-11 pr-4 py-3 text-gray-800 text-sm
-            placeholder-gray-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all shadow-sm"
+          placeholder="Search by name, ID, HUID No or category... (Alt+S or /)"
+          className="w-full bg-white border border-gray-200 rounded-xl pl-11 pr-16 py-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all shadow-xs"
         />
+        {search ? (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            title="Clear Search"
+          >
+            <X size={15} />
+          </button>
+        ) : (
+          <span className="hidden sm:flex items-center gap-1 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[10px] text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded shadow-2xs font-mono font-semibold">
+            Alt+S
+          </span>
+        )}
       </div>
 
       {/* Product Table */}
@@ -737,9 +810,10 @@ export default function InventoryPage({ products, onCreateProduct, onUpdateProdu
               <button onClick={() => { setShowForm(false); setImagePreview(null); }} disabled={saveLoading} className="flex-1 py-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 font-semibold hover:bg-gray-200 transition-all disabled:opacity-50">
                 Cancel
               </button>
-              <button onClick={handleSave} disabled={saveLoading} className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-60">
+              <button onClick={handleSave} disabled={saveLoading} className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-60" title="Save Product (Ctrl+Enter)">
                 {saveLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                {saveLoading ? 'Saving...' : editProduct ? 'Update Product' : 'Add Product'}
+                <span>{saveLoading ? 'Saving...' : editProduct ? 'Update Product' : 'Add Product'}</span>
+                <kbd className="px-1.5 py-0.5 bg-black/20 text-white rounded text-[10px] font-mono font-bold ml-1">Ctrl+Enter</kbd>
               </button>
             </div>
           </div>

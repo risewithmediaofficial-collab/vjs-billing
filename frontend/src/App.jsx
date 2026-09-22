@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './index.css';
 import { STORES } from './data.js';
 import { ToastProvider, useToast } from './ToastContext.jsx';
-import { Menu, X, Lock, ShieldAlert, Key, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Menu, X, Lock, ShieldAlert, Key, Eye, EyeOff, Loader2, AlertCircle, Keyboard } from 'lucide-react';
 import {
   authApi, productsApi, billsApi, loansApi, staffApi, settingsApi, schemesApi, activityLogsApi,
   getToken, getCurrentUser, setCurrentUser, clearToken,
@@ -19,6 +19,8 @@ import SettingsPage from './components/SettingsPage.jsx';
 import BillPreview from './components/BillPreview.jsx';
 import LoansPage from './components/LoansPage.jsx';
 import SchemesPage from './components/SchemesPage.jsx';
+import AuditTrailPage from './components/AuditTrailPage.jsx';
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.jsx';
 import useScrollLock, { getScrollLockCount } from './useScrollLock.js';
 
 // ── Inner app wrapped by ToastProvider ────────────────────────────────────────
@@ -27,6 +29,7 @@ function AppInner() {
 
   const [currentStaff, setCurrentStaff] = useState(() => getCurrentUser());
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth < 1024;
@@ -46,6 +49,80 @@ function AppInner() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // ── Global Keyboard Shortcuts ─────────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      const isInputActive = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl?.tagName);
+
+      // 1. Toggle Shortcuts Help with ? or Shift+/ (when not typing in an input field)
+      if (!isInputActive && (e.key === '?' || (e.shiftKey && e.key === '/'))) {
+        e.preventDefault();
+        setShowShortcutsModal(prev => !prev);
+        return;
+      }
+
+      // 2. Escape closes the shortcuts modal if open
+      if (e.key === 'Escape' && showShortcutsModal) {
+        e.preventDefault();
+        setShowShortcutsModal(false);
+        return;
+      }
+
+      // 3. Navigation shortcuts with Alt + [Key] (always accessible across any page)
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        const k = e.key.toLowerCase();
+        if (k === 'b') {
+          e.preventDefault();
+          setActiveTab('billing');
+        } else if (k === 'i') {
+          e.preventDefault();
+          setActiveTab('inventory');
+        } else if (k === 'h') {
+          e.preventDefault();
+          setActiveTab('invoices');
+        } else if (k === 'd') {
+          e.preventDefault();
+          setActiveTab('dashboard');
+        } else if (k === 'l') {
+          e.preventDefault();
+          setActiveTab('loans');
+        } else if (k === 'g') {
+          e.preventDefault();
+          setActiveTab('schemes');
+        } else if (k === 't') {
+          if (currentStaff?.role === 'Admin' || currentStaff?.role === 'Manager') {
+            e.preventDefault();
+            setActiveTab('audit-trail');
+          }
+        } else if (k === 'u') {
+          if (currentStaff?.role === 'Admin' || currentStaff?.role === 'Manager') {
+            e.preventDefault();
+            setActiveTab('staff');
+          }
+        } else if (k === 'e') {
+          if (currentStaff?.role === 'Admin' || currentStaff?.role === 'Manager') {
+            e.preventDefault();
+            setActiveTab('settings');
+          }
+        }
+        return;
+      }
+
+      // 4. Function keys (F1 - F4) for instant standard POS navigation
+      if (!isInputActive && ['F1', 'F2', 'F3', 'F4'].includes(e.key)) {
+        e.preventDefault();
+        if (e.key === 'F1') setActiveTab('billing');
+        else if (e.key === 'F2') setActiveTab('inventory');
+        else if (e.key === 'F3') setActiveTab('invoices');
+        else if (e.key === 'F4') setActiveTab('dashboard');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showShortcutsModal, currentStaff]);
+
   const [products, setProducts] = useState([]);
   const [bills, setBills] = useState([]);
   const [staff, setStaff] = useState([]);
@@ -54,6 +131,7 @@ function AppInner() {
   const [goldRate, setGoldRateState] = useState(7500);
   const [silverRate, setSilverRateState] = useState(85);
   const [previewBill, setPreviewBill] = useState(null);
+  const [editingBill, setEditingBill] = useState(null);
   const [activityLogs, setActivityLogs] = useState([]);
   const [currentStore, setCurrentStore] = useState(
     () => getCurrentUser()?.storeId || STORES[0].id
@@ -193,7 +271,7 @@ function AppInner() {
       setActivityLogs(logs || []);
     } catch (err) {
       const msg = err.message || 'Unable to connect to server.';
-      setDbError('⚠️ ' + msg);
+      setDbError(msg);
       toast.error(msg, 'Connection Error');
       console.error('Data load error:', err);
     } finally {
@@ -258,6 +336,56 @@ function AppInner() {
       return newBill;
     } catch (err) {
       toast.error(err.message || 'Failed to generate bill. Please try again.', 'Billing Error');
+      throw err;
+    }
+  };
+
+  // ── Bill action (Refund / Exchange with stock restoration, logged for Admin) ──
+  const handleProcessBillAction = async (billId, { action, reason }) => {
+    try {
+      const res = await billsApi.processAction(billId, { action, reason });
+      setBills(prev => prev.map(b => (b._id === billId || b.id === billId) ? res.bill : b));
+      // Refresh products to reflect restored inventory stock
+      const updatedProducts = await productsApi.getAll(currentStore);
+      setProducts(updatedProducts || []);
+      // Refresh activity logs so Admin dashboard reflects it immediately
+      if (currentStaff?.role === 'Admin') {
+        const logs = await activityLogsApi.getAll(currentStore);
+        setActivityLogs(logs || []);
+      }
+      toast.success(res.message || `Bill ${action === 'refund' ? 'refunded' : 'exchanged'} successfully!`);
+      return res.bill;
+    } catch (err) {
+      toast.error(err.message || `Failed to process ${action}.`, 'Action Error');
+      throw err;
+    }
+  };
+
+  // ── Bill Editing Handlers ──────────────────────────────────────────────────
+  const handleStartEditBill = (bill) => {
+    setEditingBill(bill);
+    setActiveTab('billing');
+  };
+
+  const handleUpdateBill = async (billId, updatedData) => {
+    try {
+      const res = await billsApi.update(billId, updatedData);
+      const updatedBill = res.bill || res;
+      setBills(prev => prev.map(b => (b._id === billId || b.id === billId) ? updatedBill : b));
+      // Refresh products to reflect updated inventory stock
+      const updatedProducts = await productsApi.getAll(currentStore);
+      setProducts(updatedProducts || []);
+      // Refresh activity logs for Admin
+      if (currentStaff?.role === 'Admin') {
+        const logs = await activityLogsApi.getAll(currentStore);
+        setActivityLogs(logs || []);
+      }
+      setEditingBill(null);
+      setActiveTab('invoices');
+      toast.success(`Invoice ${updatedBill.invoiceNumber || ''} updated successfully!`);
+      return updatedBill;
+    } catch (err) {
+      toast.error(err.message || 'Failed to update invoice.', 'Update Error');
       throw err;
     }
   };
@@ -450,7 +578,7 @@ function AppInner() {
   const storeLoans    = loans.filter(l => l.storeId === currentStore);
   const storeSchemes  = schemes.filter(s => s.storeId === currentStore);
   const canSwitchStore = currentStaff.role === 'Admin';
-  const sidebarWidth   = sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72';
+  const sidebarWidth   = sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -488,6 +616,7 @@ function AppInner() {
                    activeTab === 'inventory'        ? 'Inventory' :
                    activeTab === 'loans'            ? 'Jewel Loans' :
                    activeTab === 'schemes'          ? 'Gold Schemes' :
+                   activeTab === 'audit-trail'      ? 'Audit Trail' :
                    activeTab}
                 </h2>
 
@@ -513,8 +642,9 @@ function AppInner() {
             <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               {/* DB status */}
               {dbError && (
-                <span className="text-[10px] sm:text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-lg">
-                  {dbError}
+                <span className="text-[10px] sm:text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                  <AlertCircle size={12} className="shrink-0" />
+                  <span>{dbError}</span>
                 </span>
               )}
               {loading && (
@@ -545,6 +675,18 @@ function AppInner() {
                 </div>
                 <span className="text-gray-700 text-xs sm:text-sm font-medium hidden sm:block truncate max-w-[100px]">{currentStaff.name}</span>
               </div>
+
+              {/* Keyboard Shortcuts Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setShowShortcutsModal(true)}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 sm:py-1.5 bg-gray-100 hover:bg-amber-100 hover:text-amber-700 hover:border-amber-300 text-gray-600 border border-gray-200 rounded-xl font-semibold text-xs transition-all shadow-2xs"
+                title="Keyboard Shortcuts (Press ?)"
+              >
+                <Keyboard size={14} className="text-amber-600 shrink-0" />
+                <span className="hidden md:inline">Shortcuts</span>
+                <kbd className="px-1.5 py-0.2 text-[10px] font-mono font-bold bg-white border border-gray-300 rounded shadow-xs text-gray-500">?</kbd>
+              </button>
             </div>
           </div>
         </div>
@@ -572,10 +714,18 @@ function AppInner() {
               currentStore={currentStore}
               goldRate={goldRate}
               silverRate={silverRate}
+              editingBill={editingBill}
+              onCancelEdit={() => setEditingBill(null)}
+              onUpdateBill={handleUpdateBill}
             />
           )}
           {activeTab === 'invoices' && (
-            <InvoicesPage bills={storeBills} />
+            <InvoicesPage
+              bills={storeBills}
+              onProcessBillAction={handleProcessBillAction}
+              onEditBill={handleStartEditBill}
+              currentStaff={currentStaff}
+            />
           )}
           {activeTab === 'loans' && (
             <LoansPage
@@ -622,6 +772,14 @@ function AppInner() {
               goldRate={goldRate}
               silverRate={silverRate}
               onLockVault={handleLockSecretVault}
+            />
+          )}
+          {activeTab === 'audit-trail' && (
+            <AuditTrailPage
+              activityLogs={activityLogs}
+              currentStaff={currentStaff}
+              staff={staff}
+              onRefreshData={() => loadData(currentStore)}
             />
           )}
           {activeTab === 'staff' && (
@@ -730,6 +888,12 @@ function AppInner() {
           </div>
         </div>
       )}
+
+      {/* Keyboard Shortcuts Cheatsheet Modal */}
+      <KeyboardShortcutsModal
+        isOpen={showShortcutsModal}
+        onClose={() => setShowShortcutsModal(false)}
+      />
     </div>
   );
 }

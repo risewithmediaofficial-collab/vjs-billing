@@ -127,10 +127,12 @@ export const productsApi = {
 
 // ── Bills ─────────────────────────────────────────────────────────────────────
 export const billsApi = {
-  getAll:  (storeId)  => request(`/bills${storeId ? `?storeId=${storeId}` : ''}`),
-  getById: (id)       => request(`/bills/${id}`),
-  create:  (data)     => request('/bills', { method: 'POST', body: JSON.stringify(data) }),
-  delete:  (id)       => request(`/bills/${id}`, { method: 'DELETE' }),
+  getAll:        (storeId)    => request(`/bills${storeId ? `?storeId=${storeId}` : ''}`),
+  getById:       (id)         => request(`/bills/${id}`),
+  create:        (data)       => request('/bills', { method: 'POST', body: JSON.stringify(data) }),
+  update:        (id, data)   => request(`/bills/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  processAction: (id, data)   => request(`/bills/${id}/process-action`, { method: 'POST', body: JSON.stringify(data) }),
+  delete:        (id)         => request(`/bills/${id}`, { method: 'DELETE' }),
 };
 
 // ── Loans ─────────────────────────────────────────────────────────────────────

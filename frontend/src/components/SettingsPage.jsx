@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Store, Save, CheckCircle2, IndianRupee, Percent, Zap, TrendingUp, TrendingDown, FileText, Check } from 'lucide-react';
+import { Settings, Store, Save, CheckCircle2, IndianRupee, Percent, Zap, TrendingUp, TrendingDown, FileText, Check, AlertTriangle } from 'lucide-react';
 import { SHOP_INFO } from '../data.js';
 
 export default function SettingsPage({ goldRate, onUpdateGoldRate, silverRate, onUpdateSilverRate }) {
@@ -84,7 +84,7 @@ export default function SettingsPage({ goldRate, onUpdateGoldRate, silverRate, o
 
       {error && (
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 animate-fade-in text-xs font-semibold text-red-700 shadow-xs">
-          <span className="text-red-500 shrink-0">⚠️</span>
+          <AlertTriangle size={16} className="text-red-500 shrink-0" />
           <span>{error}</span>
         </div>
       )}

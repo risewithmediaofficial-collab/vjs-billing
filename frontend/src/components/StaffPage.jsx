@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Trash2, X, Save, CheckCircle2, ShieldCheck, Lock, KeyRound, Loader2 } from 'lucide-react';
+import { Users, Plus, Trash2, X, Save, CheckCircle2, ShieldCheck, Lock, KeyRound, Loader2, AlertTriangle, Ban, AlertCircle } from 'lucide-react';
 import { STORES, formatCurrency } from '../data.js';
 import { staffApi } from '../api.js';
 import useScrollLock from '../useScrollLock.js';
@@ -193,14 +193,18 @@ export default function StaffPage({ staff, onCreateStaff, onDeleteStaff, onUpdat
                 <p className="text-xs text-gray-500 font-semibold">Low Stock Items (1-2 Left)</p>
                 <p className="text-xl font-bold text-amber-650 mt-1">{products.filter(p => p.stock > 0 && p.stock <= 2).length}</p>
               </div>
-              <span className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 font-bold text-sm">⚠️</span>
+              <span className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 font-bold text-sm">
+                <AlertTriangle size={16} className="stroke-[2.2]" />
+              </span>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-500 font-semibold">Sold Out / Out of Stock</p>
                 <p className="text-xl font-bold text-red-650 mt-1">{products.filter(p => p.stock === 0).length}</p>
               </div>
-              <span className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500 font-bold text-sm">🚫</span>
+              <span className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 font-bold text-sm">
+                <Ban size={16} className="stroke-[2.2]" />
+              </span>
             </div>
           </div>
         </div>
@@ -411,13 +415,15 @@ export default function StaffPage({ staff, onCreateStaff, onDeleteStaff, onUpdat
 
             {/* Error and Success Banners */}
             {securityError && (
-              <div className="mb-4 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 shrink-0">
-                ⚠️ {securityError}
+              <div className="mb-4 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 shrink-0 flex items-center gap-1.5">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>{securityError}</span>
               </div>
             )}
             {securitySuccess && (
-              <div className="mb-4 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 shrink-0">
-                ✅ {securitySuccess}
+              <div className="mb-4 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 shrink-0 flex items-center gap-1.5">
+                <CheckCircle2 size={14} className="shrink-0" />
+                <span>{securitySuccess}</span>
               </div>
             )}
 
@@ -562,7 +568,7 @@ export default function StaffPage({ staff, onCreateStaff, onDeleteStaff, onUpdat
 
             {deleteError && (
               <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-3 text-xs font-medium">
-                <span>⚠️</span> {deleteError}
+                <AlertCircle size={14} className="shrink-0" /> <span>{deleteError}</span>
               </div>
             )}
 

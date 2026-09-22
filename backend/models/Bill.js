@@ -59,6 +59,25 @@ const BillSchema = new mongoose.Schema(
     staffName:     { type: String },
     storeId:       { type: String, required: true },
     notes:         { type: String, default: '' },
+    isEdited:      { type: Boolean, default: false },
+    lastEditedAt:  { type: Date },
+    lastEditedBy:  { type: String, default: '' },
+    status:        { type: String, enum: ['active', 'refunded', 'exchanged'], default: 'active' },
+    statusAction:  { type: String, default: '' }, // 'refund' | 'exchange'
+    actionReason:  { type: String, default: '' },
+    actionDate:    { type: Date },
+    actionBy:      { type: String, default: '' },
+    exchangeDetails: {
+      applied:        { type: Boolean, default: false },
+      metalType:      { type: String, default: 'gold' }, // 'gold' | 'silver'
+      purity:         { type: String, default: '22K' },
+      grossWeight:    { type: Number, default: 0 },
+      meltingLoss:    { type: Number, default: 0 },
+      netWeight:      { type: Number, default: 0 },
+      rate:           { type: Number, default: 0 },
+      totalDeduction: { type: Number, default: 0 },
+      notes:          { type: String, default: '' },
+    },
   },
   { timestamps: true }
 );
