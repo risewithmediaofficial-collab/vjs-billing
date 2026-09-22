@@ -1111,7 +1111,9 @@ function BillingPage({
                       key={pid}
                       draggable={!outOfStock}
                       onDragStart={(e) => {
-                        e.dataTransfer.setData('text/plain', JSON.stringify({ productId: pid }));
+                        const payload = JSON.stringify({ productId: pid, type: 'vjs-product' });
+                        e.dataTransfer.setData('application/vnd.vjs-product', payload);
+                        e.dataTransfer.setData('application/json', payload);
                         e.dataTransfer.effectAllowed = 'copy';
                       }}
                       className={`flex items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 transition-all ${
@@ -1244,17 +1246,36 @@ function BillingPage({
             e.preventDefault();
             setIsDragOverBill(false);
             try {
-              const raw = e.dataTransfer.getData('text/plain');
-              if (raw) {
-                const data = JSON.parse(raw);
-                const prod = products.find(p => (p._id || p.id) === data.productId);
+              let productId = null;
+              const productPayload = e.dataTransfer.getData('application/vnd.vjs-product') || e.dataTransfer.getData('application/json');
+              if (productPayload) {
+                try {
+                  const data = JSON.parse(productPayload);
+                  if (data && data.productId) productId = data.productId;
+                } catch {
+                  // Not product JSON, ignore safely
+                }
+              }
+              if (!productId) {
+                const rawText = e.dataTransfer.getData('text/plain');
+                if (rawText && rawText.trim().startsWith('{')) {
+                  try {
+                    const data = JSON.parse(rawText);
+                    if (data && data.productId) productId = data.productId;
+                  } catch {
+                    // Not JSON (e.g. highlighted text on screen), ignore safely
+                  }
+                }
+              }
+              if (productId) {
+                const prod = products.find(p => (p._id || p.id) === productId);
                 if (prod && prod.stock > 0) {
                   addToBill(prod);
                   showToast(`Added ${prod.name} to bill!`);
                 }
               }
-            } catch (err) {
-              console.error('Drop error:', err);
+            } catch {
+              // Never throw or log errors for random user drag/drop actions
             }
           }}
           className={`min-w-0 w-full bg-white border rounded-2xl shadow-sm overflow-hidden flex flex-col lg:sticky lg:top-3 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto transition-all ${
