@@ -570,18 +570,18 @@ function AppInner() {
     }
   };
 
-  // ── Not logged in ──────────────────────────────────────────────────────────
-  if (!currentStaff) {
-    return <LoginScreen onLogin={handleLogin} />;
-  }
-
-  // ── Derived ───────────────────────────────────────────────────────────────
+  // ── Derived (must be before early return to satisfy Rules of Hooks) ────────
   const storeProducts = useMemo(() => products.filter(p => p.storeId === currentStore), [products, currentStore]);
   const storeBills    = useMemo(() => bills.filter(b => b.storeId === currentStore), [bills, currentStore]);
   const storeLoans    = useMemo(() => loans.filter(l => l.storeId === currentStore), [loans, currentStore]);
   const storeSchemes  = useMemo(() => schemes.filter(s => s.storeId === currentStore), [schemes, currentStore]);
-  const canSwitchStore = currentStaff.role === 'Admin';
+  const canSwitchStore = currentStaff?.role === 'Admin';
   const sidebarWidth   = sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64';
+
+  // ── Not logged in ──────────────────────────────────────────────────────────
+  if (!currentStaff) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
