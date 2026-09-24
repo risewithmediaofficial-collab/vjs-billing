@@ -111,8 +111,26 @@ router.post('/', auth, async (req, res) => {
       dueDate = calculateDueDate(issueDate, tenureMonths);
     }
 
+    let loanNumber = req.body.loanNumber;
+    if (!loanNumber) {
+      const year = new Date().getFullYear();
+      const prefix = `GL-${year}-`;
+      const lastLoan = await Loan.findOne(
+        { loanNumber: { $regex: `^${prefix}` } },
+        { loanNumber: 1 },
+        { sort: { loanNumber: -1 } }
+      );
+      let nextSeq = 1;
+      if (lastLoan && lastLoan.loanNumber) {
+        const seq = parseInt(lastLoan.loanNumber.slice(prefix.length), 10);
+        if (!isNaN(seq)) nextSeq = seq + 1;
+      }
+      loanNumber = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+    }
+
     const loan = new Loan({
       ...req.body,
+      loanNumber,
       issueDate,
       tenureMonths,
       dueDate,

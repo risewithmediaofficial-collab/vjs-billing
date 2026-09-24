@@ -1,0 +1,492 @@
+{
+  "info": {
+    "name": "VJS Billing — Backend API Tests",
+    "_postman_id": "vjs-billing-api-tests-v2",
+    "description": "Complete API test suite for VJS Jewellery Billing System backend.\nCovers: Auth, Products, Bills, Loans, Schemes, Staff, Settings, Activity Logs.\n\nSetup:\n1. Set `baseUrl` collection variable to http://localhost:5000\n2. Run 'Auth → Login (Admin)' first — it auto-saves the JWT token.\n3. All subsequent requests use {{token}} automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",   "value": "http://localhost:5000", "type": "string" },
+    { "key": "token",     "value": "", "type": "string" },
+    { "key": "productId", "value": "", "type": "string" },
+    { "key": "billId",    "value": "", "type": "string" },
+    { "key": "loanId",   "value": "", "type": "string" },
+    { "key": "schemeId", "value": "", "type": "string" },
+    { "key": "staffId",  "value": "", "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/", "host": ["{{baseUrl}}"], "path": [""] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Backend running', () => pm.expect(pm.response.json().message).to.include('running'));"
+          ]}}]
+        },
+        {
+          "name": "Login — missing fields (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 400 on missing fields', () => pm.response.to.have.status(400));",
+            "pm.test('Has message', () => pm.expect(pm.response.json()).to.have.property('message'));"
+          ]}}]
+        },
+        {
+          "name": "Login — invalid credentials (401)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"name\":\"System Admin\",\"pin\":\"WRONGPIN\"}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 401 on wrong credentials', () => pm.response.to.have.status(401));"
+          ]}}]
+        },
+        {
+          "name": "Login — Admin (saves token) ✅",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"name\":\"System Admin\",\"pin\":\"0000\"}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('Has token', () => pm.expect(body).to.have.property('token'));",
+            "pm.test('Has user', () => pm.expect(body).to.have.property('user'));",
+            "pm.test('Role is Admin', () => pm.expect(body.user.role).to.eql('Admin'));",
+            "pm.collectionVariables.set('token', body.token);"
+          ]}}]
+        }
+      ]
+    },
+
+    {
+      "name": "📦 Products",
+      "item": [
+        {
+          "name": "GET /api/products — no auth (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/products", "host": ["{{baseUrl}}"], "path": ["api","products"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Requires auth — 401', () => pm.response.to.have.status(401));"
+          ]}}]
+        },
+        {
+          "name": "GET /api/products (authenticated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/products?storeId=store-1", "host": ["{{baseUrl}}"], "path": ["api","products"], "query": [{"key":"storeId","value":"store-1"}] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+            "pm.test('Response time < 2000ms', () => pm.expect(pm.response.responseTime).to.be.below(2000));"
+          ]}}]
+        },
+        {
+          "name": "POST /api/products — create product ✅",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Test Ring\",\"category\":\"Rings\",\"barcode\":\"TEST-HUID-9999\",\"weight\":5.2,\"purity\":\"22K\",\"makingCharge\":500,\"stoneCharge\":0,\"goldRate\":7500,\"stock\":3,\"storeId\":\"store-1\",\"metalType\":\"gold\",\"gstPercent\":3}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/products", "host": ["{{baseUrl}}"], "path": ["api","products"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.test('Has _id', () => pm.expect(body).to.have.property('_id'));",
+            "pm.test('Name is Test Ring', () => pm.expect(body.name).to.eql('Test Ring'));",
+            "pm.test('Category is Rings', () => pm.expect(body.category).to.eql('Rings'));",
+            "pm.collectionVariables.set('productId', body._id);"
+          ]}}]
+        },
+        {
+          "name": "POST /api/products — duplicate HUID (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Duplicate Ring\",\"category\":\"Rings\",\"barcode\":\"TEST-HUID-9999\",\"weight\":3,\"purity\":\"22K\",\"makingCharge\":300,\"stoneCharge\":0,\"goldRate\":7500,\"stock\":1,\"storeId\":\"store-1\",\"metalType\":\"gold\",\"gstPercent\":3}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/products", "host": ["{{baseUrl}}"], "path": ["api","products"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 400 on duplicate HUID', () => pm.response.to.have.status(400));",
+            "pm.test('Error mentions HUID', () => pm.expect(pm.response.json().message).to.include('HUID'));"
+          ]}}]
+        },
+        {
+          "name": "GET /api/products/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["api","products","{{productId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Product id matches', () => pm.expect(pm.response.json()._id).to.eql(pm.collectionVariables.get('productId')));"
+          ]}}]
+        },
+        {
+          "name": "PUT /api/products/:id — update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"stock\":10,\"goldRate\":7800}" },
+            "url": { "raw": "{{baseUrl}}/api/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["api","products","{{productId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Stock updated to 10', () => pm.expect(pm.response.json().stock).to.eql(10));"
+          ]}}]
+        },
+        {
+          "name": "DELETE /api/products/:id — cleanup",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["api","products","{{productId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Success message', () => pm.expect(pm.response.json().message).to.include('deleted'));"
+          ]}}]
+        }
+      ]
+    },
+
+    {
+      "name": "🧾 Bills",
+      "item": [
+        {
+          "name": "GET /api/bills (authenticated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/bills?storeId=store-1", "host": ["{{baseUrl}}"], "path": ["api","bills"], "query": [{"key":"storeId","value":"store-1"}] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+          ]}}]
+        },
+        {
+          "name": "POST /api/bills — create tax invoice ✅",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customer\":{\"name\":\"Test Customer\",\"phone\":\"9876543210\",\"address\":\"\"},\"items\":[{\"name\":\"Test Ring\",\"category\":\"Rings\",\"weight\":5,\"purity\":\"22K\",\"goldRate\":7500,\"makingCharge\":500,\"stoneCharge\":0,\"quantity\":1,\"finalTotal\":44375}],\"totalAmount\":44375,\"netPayable\":44375,\"paymentMethod\":\"Cash\",\"storeId\":\"store-1\",\"staffName\":\"System Admin\",\"billType\":\"tax_invoice\"}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/bills", "host": ["{{baseUrl}}"], "path": ["api","bills"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.test('Has _id', () => pm.expect(body).to.have.property('_id'));",
+            "pm.test('Has invoiceNumber', () => pm.expect(body).to.have.property('invoiceNumber'));",
+            "pm.test('Invoice starts with INV-', () => pm.expect(body.invoiceNumber).to.match(/^INV-/));",
+            "pm.test('Customer name set', () => pm.expect(body.customer.name).to.eql('Test Customer'));",
+            "pm.collectionVariables.set('billId', body._id);"
+          ]}}]
+        },
+        {
+          "name": "POST /api/bills — create quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customer\":{\"name\":\"Quote Customer\",\"phone\":\"9999999999\",\"address\":\"\"},\"items\":[{\"name\":\"Test Chain\",\"category\":\"Chains\",\"weight\":10,\"purity\":\"22K\",\"goldRate\":7500,\"makingCharge\":300,\"stoneCharge\":0,\"quantity\":1,\"finalTotal\":78000}],\"totalAmount\":78000,\"netPayable\":78000,\"paymentMethod\":\"Cash\",\"storeId\":\"store-1\",\"staffName\":\"System Admin\",\"billType\":\"quotation\",\"isRoughBill\":true}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/bills", "host": ["{{baseUrl}}"], "path": ["api","bills"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "pm.test('Invoice starts with EST-', () => pm.expect(pm.response.json().invoiceNumber).to.match(/^EST-/));"
+          ]}}]
+        },
+        {
+          "name": "GET /api/bills/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/bills/{{billId}}", "host": ["{{baseUrl}}"], "path": ["api","bills","{{billId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Bill id matches', () => pm.expect(pm.response.json()._id).to.eql(pm.collectionVariables.get('billId')));"
+          ]}}]
+        }
+      ]
+    },
+
+    {
+      "name": "👥 Staff",
+      "item": [
+        {
+          "name": "GET /api/staff",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/staff", "host": ["{{baseUrl}}"], "path": ["api","staff"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+            "pm.test('System Admin exists', () => {",
+            "  pm.expect(pm.response.json().some(u => u.name === 'System Admin')).to.be.true;",
+            "});"
+          ]}}]
+        },
+        {
+          "name": "POST /api/staff — create staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"name\":\"Test Staff Newman\",\"role\":\"Staff\",\"pin\":\"1234\",\"storeId\":\"store-1\",\"isActive\":true}" },
+            "url": { "raw": "{{baseUrl}}/api/staff", "host": ["{{baseUrl}}"], "path": ["api","staff"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.test('Has _id', () => pm.expect(body).to.have.property('_id'));",
+            "pm.test('Role is Staff', () => pm.expect(body.role).to.eql('Staff'));",
+            "pm.collectionVariables.set('staffId', body._id);"
+          ]}}]
+        },
+        {
+          "name": "PUT /api/staff/:id — update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"role\":\"Manager\"}" },
+            "url": { "raw": "{{baseUrl}}/api/staff/{{staffId}}", "host": ["{{baseUrl}}"], "path": ["api","staff","{{staffId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Role updated to Manager', () => pm.expect(pm.response.json().role).to.eql('Manager'));"
+          ]}}]
+        },
+        {
+          "name": "DELETE /api/staff/:id — cleanup",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/staff/{{staffId}}", "host": ["{{baseUrl}}"], "path": ["api","staff","{{staffId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}]
+        }
+      ]
+    },
+
+    {
+      "name": "⚙️ Settings",
+      "item": [
+        {
+          "name": "GET /api/settings/:storeId",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/settings/store-1", "host": ["{{baseUrl}}"], "path": ["api","settings","store-1"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('Has goldRate', () => pm.expect(body).to.have.property('goldRate'));",
+            "pm.test('Has silverRate', () => pm.expect(body).to.have.property('silverRate'));",
+            "pm.test('goldRate is a number', () => pm.expect(body.goldRate).to.be.a('number'));"
+          ]}}]
+        },
+        {
+          "name": "PUT /api/settings/:storeId — update rates",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"goldRate\":7600,\"silverRate\":90}" },
+            "url": { "raw": "{{baseUrl}}/api/settings/store-1", "host": ["{{baseUrl}}"], "path": ["api","settings","store-1"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Gold rate updated', () => pm.expect(pm.response.json().goldRate).to.eql(7600));",
+            "pm.test('Silver rate updated', () => pm.expect(pm.response.json().silverRate).to.eql(90));"
+          ]}}]
+        }
+      ]
+    },
+
+    {
+      "name": "🏦 Loans",
+      "item": [
+        {
+          "name": "GET /api/loans",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/loans?storeId=store-1", "host": ["{{baseUrl}}"], "path": ["api","loans"], "query": [{"key":"storeId","value":"store-1"}] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+          ]}}]
+        },
+        {
+          "name": "POST /api/loans — create loan ✅",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"loanNumber\":\"GL-TEST-{{$timestamp}}\",\"customerName\":\"Loan Test Customer\",\"customerMobile\":\"9123456780\",\"pledgeItem\":\"Gold Chain 10g\",\"weight\":10,\"purity\":\"22K\",\"loanAmount\":50000,\"interestRate\":1.5,\"overdueInterestRate\":2,\"tenureMonths\":11,\"issueDate\":\"2026-09-01T00:00:00.000Z\",\"status\":\"Active\",\"storeId\":\"store-1\",\"staffName\":\"System Admin\"}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/loans", "host": ["{{baseUrl}}"], "path": ["api","loans"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.test('Has _id', () => pm.expect(body).to.have.property('_id'));",
+            "pm.test('Has loanNumber', () => pm.expect(body).to.have.property('loanNumber'));",
+            "pm.test('Status is Active', () => pm.expect(body.status).to.eql('Active'));",
+            "pm.collectionVariables.set('loanId', body._id);"
+          ]}}]
+        },
+        {
+          "name": "GET /api/loans/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/loans/{{loanId}}", "host": ["{{baseUrl}}"], "path": ["api","loans","{{loanId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Loan id matches', () => pm.expect(pm.response.json()._id).to.eql(pm.collectionVariables.get('loanId')));"
+          ]}}]
+        },
+        {
+          "name": "DELETE /api/loans/:id — cleanup",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/loans/{{loanId}}", "host": ["{{baseUrl}}"], "path": ["api","loans","{{loanId}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}]
+        }
+      ]
+    },
+
+    {
+      "name": "💎 Schemes",
+      "item": [
+        {
+          "name": "GET /api/schemes",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/schemes?storeId=store-1", "host": ["{{baseUrl}}"], "path": ["api","schemes"], "query": [{"key":"storeId","value":"store-1"}] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+          ]}}]
+        },
+        {
+          "name": "POST /api/schemes — enroll ✅",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerName\":\"Scheme Test Customer\",\"customerPhone\":\"9000000001\",\"customerAddress\":\"Test Colony\",\"metalType\":\"gold\",\"schemeName\":\"VJS Gold Savings Scheme\",\"schemeType\":\"classic_11_1\",\"monthlyAmount\":2000,\"totalMonths\":11,\"bonusMonths\":1,\"interestRate\":0,\"goldRateAtEnrollment\":7500,\"silverRateAtEnrollment\":85,\"storeId\":\"store-1\",\"staffName\":\"System Admin\"}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/schemes", "host": ["{{baseUrl}}"], "path": ["api","schemes"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.test('Has _id', () => pm.expect(body).to.have.property('_id'));",
+            "pm.test('Status is active', () => pm.expect(body.status).to.eql('active'));",
+            "pm.collectionVariables.set('schemeId', body._id);"
+          ]}}]
+        }
+      ]
+    },
+
+    {
+      "name": "📋 Activity Logs",
+      "item": [
+        {
+          "name": "GET /api/activity-logs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/activity-logs?storeId=store-1", "host": ["{{baseUrl}}"], "path": ["api","activity-logs"], "query": [{"key":"storeId","value":"store-1"}] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+          ]}}]
+        }
+      ]
+    }
+
+  ]
+}
