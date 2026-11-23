@@ -177,7 +177,7 @@ export default function LandingPage({
   };
 
   return (
-    <div className="min-h-screen bg-[#fefefe] text-gray-900 selection:bg-[#dccd88] selection:text-[#551f1f] w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-[#fefefe] text-gray-900 selection:bg-[#dccd88] selection:text-[#551f1f] w-full max-w-full overflow-x-hidden pb-16 lg:pb-0">
 
       {/* ── 1. Top Announcement Bar (Royal Maroon #551f1f with Champagne Gold #dccd88) ── */}
       <div className="bg-[#551f1f] text-[#ffffd6] border-b border-[#dccd88]/30 px-3 sm:px-6 py-2 text-[10.5px] sm:text-xs tracking-wider w-full max-w-full overflow-hidden">
@@ -211,20 +211,20 @@ export default function LandingPage({
       </div>
 
       {/* ── 2. Main Luxury Header & Navigation Bar ── */}
-      <header className="sticky top-0 z-40 bg-[#fefefe]/95 backdrop-blur-md border-b border-[#cbadab]/40 shadow-xs w-full max-w-full overflow-hidden">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
+      <header className="sticky top-0 z-40 bg-[#fefefe]/95 backdrop-blur-md border-b border-[#cbadab]/40 shadow-xs w-full max-w-full">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 h-14 sm:h-20 flex items-center justify-between gap-1 sm:gap-4">
           
           {/* Brand Logo */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#551f1f] border border-[#dccd88] flex items-center justify-center shrink-0 shadow-sm">
-              <Gem size={18} className="text-[#ffffd6] sm:hidden" />
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
+            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#551f1f] border border-[#dccd88] flex items-center justify-center shrink-0 shadow-sm">
+              <Gem size={15} className="text-[#ffffd6] sm:hidden" />
               <Gem size={22} className="text-[#ffffd6] hidden sm:block" />
             </div>
-            <a href="#" className="flex flex-col justify-center shrink-0">
-              <span className="font-cinzel text-base sm:text-xl lg:text-2xl font-black tracking-wider text-[#551f1f] uppercase whitespace-nowrap leading-none pb-0.5">
+            <a href="#" className="flex flex-col justify-center">
+              <span className="font-cinzel text-xs xs:text-sm sm:text-xl lg:text-2xl font-black tracking-wider text-[#551f1f] uppercase whitespace-nowrap leading-none">
                 VJS JEWELLERY
               </span>
-              <span className="hidden xs:block text-[8px] sm:text-[9.5px] font-bold tracking-[0.18em] text-[#a49141] uppercase whitespace-nowrap leading-none">
+              <span className="hidden md:block text-[8px] sm:text-[9.5px] font-bold tracking-[0.18em] text-[#a49141] uppercase whitespace-nowrap leading-none mt-0.5">
                 Fine Jewellery &amp; Bullion
               </span>
             </a>
@@ -246,26 +246,30 @@ export default function LandingPage({
           </nav>
 
           {/* Action CTAs: Live Bullion Pill + Search + Wishlist + Hamburger */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
             {/* Live Rate Pill Trigger */}
             <button
               onClick={onOpenBullionModal}
-              className="flex items-center gap-1 sm:gap-1.5 bg-[#ffffd6] hover:bg-[#dccd88]/40 border border-[#dccd88] text-[#551f1f] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all shadow-xs cursor-pointer group shrink-0"
+              className="flex items-center gap-1 sm:gap-1.5 bg-[#ffffd6] hover:bg-[#dccd88]/40 border border-[#dccd88] text-[#551f1f] px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all shadow-xs cursor-pointer group shrink-0"
               title="Click to view live India Bullion (IBJA) rates"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-serif font-black whitespace-nowrap">22K: ₹{Math.round(gold22kObj.perGram || 11461).toLocaleString('en-IN')}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="font-serif font-black whitespace-nowrap">
+                <span className="sm:hidden">₹{Math.round(gold22kObj.perGram || 11461).toLocaleString('en-IN')}</span>
+                <span className="hidden sm:inline">22K: ₹{Math.round(gold22kObj.perGram || 11461).toLocaleString('en-IN')}</span>
+              </span>
               <span className="hidden md:inline text-[11px] text-[#551f1f]/70">| Silver ₹{Math.round(silverObj.perGram || 98)}</span>
-              <TrendingUp size={12} className="text-emerald-700 sm:ml-0.5 group-hover:scale-110 transition-transform shrink-0" />
+              <TrendingUp size={11} className="text-emerald-700 sm:ml-0.5 group-hover:scale-110 transition-transform shrink-0 hidden sm:inline" />
             </button>
 
             {/* Quick Search */}
             <button
               onClick={() => setShowSearchModal(true)}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-[#cbadab]/30 text-gray-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-[#cbadab]/30 text-gray-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
               title="Search jewellery"
             >
-              <Search size={15} />
+              <Search size={14} className="sm:hidden" />
+              <Search size={15} className="hidden sm:block" />
             </button>
 
             {/* Wishlist Icon matching Image 2 */}
@@ -277,81 +281,211 @@ export default function LandingPage({
               <Heart size={15} />
             </a>
 
-            {/* Mobile Menu Hamburger Button */}
+            {/* Mobile Menu Hamburger Button - ALWAYS visible on mobile & tablet */}
             <button
               onClick={() => setMobileNavOpen(true)}
-              className="lg:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#551f1f] text-[#ffffd6] hover:bg-[#421616] flex items-center justify-center transition-colors cursor-pointer shadow-xs shrink-0"
+              className="lg:hidden w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-[#551f1f] text-[#ffffd6] hover:bg-[#421616] active:scale-95 flex items-center justify-center transition-all cursor-pointer shadow-md shrink-0 ml-0.5"
               title="Open Navigation Menu"
+              aria-label="Open Navigation Menu"
             >
-              <Menu size={17} />
+              <Menu size={16} className="sm:hidden" />
+              <Menu size={17} className="hidden sm:block" />
             </button>
           </div>
 
         </div>
       </header>
 
-      {/* ── Mobile Navigation Drawer ── */}
+      {/* ── Mobile Navigation Drawer (Sidebar) ── */}
       {mobileNavOpen && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity">
           <div 
             className="fixed inset-0"
             onClick={() => setMobileNavOpen(false)}
+            aria-hidden="true"
           />
-          <div className="relative w-full max-w-xs bg-white h-full shadow-2xl flex flex-col border-l border-[#cbadab] p-5 sm:p-6 space-y-5 overflow-y-auto animate-drawer-right">
+          <div className="relative w-[85vw] max-w-[320px] bg-white h-full shadow-2xl flex flex-col border-l border-[#cbadab] p-4 sm:p-6 space-y-4 overflow-y-auto">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div>
-                <span className="font-cinzel text-base sm:text-lg font-black text-[#551f1f] block leading-tight">VJS JEWELLERY</span>
-                <span className="text-[9px] text-[#a49141] font-bold tracking-widest uppercase">Fine Jewellery &amp; Bullion</span>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#551f1f] border border-[#dccd88] flex items-center justify-center shadow-xs">
+                  <Gem size={15} className="text-[#ffffd6]" />
+                </div>
+                <div>
+                  <span className="font-cinzel text-base font-black text-[#551f1f] block leading-tight">VJS JEWELLERY</span>
+                  <span className="text-[8.5px] text-[#a49141] font-bold tracking-widest uppercase">Fine Jewellery &amp; Bullion</span>
+                </div>
               </div>
               <button
                 onClick={() => setMobileNavOpen(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:text-gray-800 flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 hover:text-gray-900 hover:bg-gray-200 flex items-center justify-center cursor-pointer transition-colors"
+                aria-label="Close menu"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
-            <nav className="flex flex-col space-y-2 text-sm font-semibold text-gray-800">
+            {/* Quick Live Bullion Rates Card in Sidebar */}
+            <div 
+              onClick={() => { setMobileNavOpen(false); onOpenBullionModal(); }}
+              className="p-3 rounded-xl bg-gradient-to-r from-[#ffffd6] to-[#fefefe] border border-[#dccd88] shadow-xs cursor-pointer hover:shadow-md transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-bold text-[#551f1f]">
+                  <Coins size={14} className="text-[#a49141]" />
+                  <span>Live IBJA Gold Rate</span>
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">Live Market</span>
+              </div>
+              <div className="mt-2 flex items-baseline justify-between">
+                <div>
+                  <span className="text-[11px] text-gray-500 font-medium">22K (916) / Gram:</span>
+                  <p className="text-base font-serif font-black text-[#551f1f]">₹{Math.round(gold22kObj.perGram || 11461).toLocaleString('en-IN')}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] text-gray-500 font-medium">Silver 999:</span>
+                  <p className="text-xs font-serif font-bold text-gray-700">₹{Math.round(silverObj.perGram || 98)}/g</p>
+                </div>
+              </div>
+              <p className="text-[10px] text-[#551f1f]/80 mt-1.5 flex items-center gap-1 font-medium">
+                <span>Tap to open full rate card &amp; purity chart</span>
+                <ArrowRight size={10} />
+              </p>
+            </div>
+
+            {/* Navigation Links */}
+            <nav className="flex flex-col space-y-1 text-sm font-semibold text-gray-800">
               <a 
                 href="#rates-section" 
                 onClick={() => setMobileNavOpen(false)}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-[#ffffd6] border border-[#dccd88] text-[#551f1f] font-bold"
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#ffffd6]/60 text-gray-800 transition-colors"
               >
-                <span className="flex items-center gap-2 text-xs">
-                  <Coins size={15} />
-                  <span>Today's Bullion Rates</span>
+                <TrendingUp size={16} className="text-[#551f1f]" />
+                <span>Today's Bullion Rates</span>
+              </a>
+              <a 
+                href="#categories" 
+                onClick={() => setMobileNavOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#ffffd6]/60 text-gray-800 transition-colors"
+              >
+                <Sparkles size={16} className="text-[#551f1f]" />
+                <span>Shop by Category &amp; Rings</span>
+              </a>
+              <a 
+                href="#best-sellers" 
+                onClick={() => setMobileNavOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#ffffd6]/60 text-gray-800 transition-colors"
+              >
+                <Award size={16} className="text-[#551f1f]" />
+                <span>Best Sellers Collection</span>
+              </a>
+              <a 
+                href="#custom-jewel" 
+                onClick={() => setMobileNavOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#ffffd6]/60 text-gray-800 transition-colors"
+              >
+                <Gem size={16} className="text-[#551f1f]" />
+                <span>Custom Jewellery &amp; Bridal</span>
+              </a>
+              <a 
+                href="#savings-schemes" 
+                onClick={() => setMobileNavOpen(false)}
+                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#ffffd6]/60 text-gray-800 transition-colors"
+              >
+                <span className="flex items-center gap-3">
+                  <ShieldCheck size={16} className="text-[#551f1f]" />
+                  <span>11+1 Savings Scheme</span>
                 </span>
-                <span className="text-xs font-mono font-bold">22K: ₹{Math.round(gold22kObj.perGram || 11461)}</span>
+                <span className="bg-[#551f1f] text-[#ffffd6] text-[9.5px] px-2 py-0.5 rounded font-bold">0% Wastage</span>
               </a>
-              <a href="#categories" onClick={() => setMobileNavOpen(false)} className="p-2 hover:bg-gray-50 rounded-lg text-xs">Categories &amp; Rings</a>
-              <a href="#best-sellers" onClick={() => setMobileNavOpen(false)} className="p-2 hover:bg-gray-50 rounded-lg text-xs">Best Sellers</a>
-              <a href="#custom-jewel" onClick={() => setMobileNavOpen(false)} className="p-2 hover:bg-gray-50 rounded-lg text-xs">Custom Jewellery</a>
-              <a href="#savings-schemes" onClick={() => setMobileNavOpen(false)} className="p-2 hover:bg-gray-50 rounded-lg flex items-center gap-2 text-xs">
-                <span className="bg-[#551f1f] text-[#ffffd6] text-[9px] px-1.5 py-0.5 rounded font-bold">11+1</span>
-                <span>Savings Scheme</span>
+              <a 
+                href="#jewel-loans" 
+                onClick={() => setMobileNavOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#ffffd6]/60 text-gray-800 transition-colors"
+              >
+                <Layers size={16} className="text-[#551f1f]" />
+                <span>Jewel Loans &amp; Pledges</span>
               </a>
-              <a href="#jewel-loans" onClick={() => setMobileNavOpen(false)} className="p-2 hover:bg-gray-50 rounded-lg text-xs">Jewel Loans</a>
-              <a href="#about-us" onClick={() => setMobileNavOpen(false)} className="p-2 hover:bg-gray-50 rounded-lg text-xs">About Us &amp; Timings</a>
+              <a 
+                href="#about-us" 
+                onClick={() => setMobileNavOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#ffffd6]/60 text-gray-800 transition-colors"
+              >
+                <MapPin size={16} className="text-[#551f1f]" />
+                <span>About Us &amp; Branch Locations</span>
+              </a>
             </nav>
 
             {/* Store Contact CTA Button */}
-            <div className="pt-3 border-t border-gray-100">
+            <div className="pt-2 border-t border-gray-100">
               <a
                 href={`tel:${SHOP_INFO.phone || '+919876543210'}`}
-                className="w-full py-2.5 rounded-full bg-[#551f1f] text-[#ffffd6] border border-[#dccd88] font-bold text-xs uppercase tracking-wider shadow-md hover:bg-[#421616] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 rounded-full bg-[#551f1f] text-[#ffffd6] border border-[#dccd88] font-bold text-xs uppercase tracking-wider shadow-md hover:bg-[#421616] transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
               >
                 <Phone size={13} className="text-[#dccd88]" />
                 <span>Call Store: {SHOP_INFO.phone || '+91 98765 43210'}</span>
               </a>
             </div>
 
-            <div className="text-[10.5px] text-gray-500 bg-stone-50 p-2.5 rounded-xl border border-gray-200 text-center space-y-0.5">
+            <div className="text-[10px] text-gray-500 bg-stone-50 p-2.5 rounded-xl border border-gray-200 text-center space-y-0.5">
               <p className="font-bold text-gray-700">Open 9:00 AM – 9:00 PM All Days</p>
               <p className="text-[#a49141] font-semibold">Weekly Holiday: Monday</p>
+              <p className="text-gray-400 text-[9px] pt-1">Krishnagiri Main &amp; Chennai Branch</p>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Mobile Sticky Bottom Action Bar (Thumb-friendly Navigation & Sidebar Trigger) ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#fefefe]/95 backdrop-blur-md border-t border-[#dccd88]/60 shadow-[0_-4px_20px_rgba(85,31,31,0.08)] px-2 py-1 flex items-center justify-around">
+        <button
+          onClick={onOpenBullionModal}
+          className="flex flex-col items-center justify-center text-[#551f1f] hover:text-[#421616] py-1 px-2 cursor-pointer transition-colors"
+          title="Live Gold & Silver Rates"
+        >
+          <Coins size={17} className="text-[#a49141]" />
+          <span className="text-[9.5px] font-bold mt-0.5">Live Rates</span>
+        </button>
+
+        <a
+          href="#categories"
+          className="flex flex-col items-center justify-center text-gray-700 hover:text-[#551f1f] py-1 px-2 cursor-pointer transition-colors"
+          title="Browse Jewellery Categories"
+        >
+          <Sparkles size={17} />
+          <span className="text-[9.5px] font-medium mt-0.5">Categories</span>
+        </a>
+
+        <a
+          href="#savings-schemes"
+          className="flex flex-col items-center justify-center text-gray-700 hover:text-[#551f1f] py-1 px-2 cursor-pointer transition-colors"
+          title="11+1 Monthly Gold Scheme"
+        >
+          <span className="w-4 h-4 rounded-full bg-[#551f1f] text-[#ffffd6] text-[8.5px] font-black flex items-center justify-center leading-none">
+            11+1
+          </span>
+          <span className="text-[9.5px] font-medium mt-0.5">Scheme</span>
+        </a>
+
+        <a
+          href={`tel:${SHOP_INFO.phone || '+919876543210'}`}
+          className="flex flex-col items-center justify-center text-gray-700 hover:text-[#551f1f] py-1 px-2 cursor-pointer transition-colors"
+          title="Call Showroom"
+        >
+          <Phone size={17} className="text-emerald-700" />
+          <span className="text-[9.5px] font-medium mt-0.5">Call Store</span>
+        </a>
+
+        <button
+          onClick={() => setMobileNavOpen(true)}
+          className="flex flex-col items-center justify-center text-[#551f1f] hover:text-[#421616] py-1 px-2 cursor-pointer transition-colors"
+          title="Open Menu Sidebar"
+        >
+          <div className="w-5 h-5 rounded bg-[#551f1f] text-[#ffffd6] flex items-center justify-center">
+            <Menu size={13} />
+          </div>
+          <span className="text-[9.5px] font-bold text-[#551f1f] mt-0.5">Menu</span>
+        </button>
+      </div>
 
       {/* ── 3. Hero Section (Exact 2-Column Split matching Image 2) ── */}
       <section className="relative overflow-hidden bg-gradient-to-b from-[#fefefe] via-[#ffffd6]/20 to-[#fefefe] py-10 sm:py-16 border-b border-[#cbadab]/30">
