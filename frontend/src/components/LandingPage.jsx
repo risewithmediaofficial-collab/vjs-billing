@@ -177,55 +177,61 @@ export default function LandingPage({
   };
 
   return (
-    <div className="min-h-screen bg-[#fefefe] text-gray-900 selection:bg-[#dccd88] selection:text-[#551f1f]">
+    <div className="min-h-screen bg-[#fefefe] text-gray-900 selection:bg-[#dccd88] selection:text-[#551f1f] w-full max-w-full overflow-x-hidden">
 
       {/* ── 1. Top Announcement Bar (Royal Maroon #551f1f with Champagne Gold #dccd88) ── */}
-      <div className="bg-[#551f1f] text-[#ffffd6] border-b border-[#dccd88]/30 px-3 sm:px-6 py-2 text-[11px] sm:text-xs tracking-wider">
-        <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-6 overflow-x-auto py-0.5 scrollbar-none">
+      <div className="bg-[#551f1f] text-[#ffffd6] border-b border-[#dccd88]/30 px-3 sm:px-6 py-2 text-[10.5px] sm:text-xs tracking-wider w-full max-w-full overflow-hidden">
+        {/* Desktop Multi-item Banner */}
+        <div className="hidden sm:flex max-w-7xl mx-auto items-center justify-between gap-4">
+          <div className="flex items-center gap-5 overflow-hidden">
             <span className="flex items-center gap-1.5 whitespace-nowrap font-medium">
-              <Truck size={13} className="text-[#dccd88]" /> Free domestic insured delivery
+              <Truck size={13} className="text-[#dccd88] shrink-0" /> Free domestic insured delivery
             </span>
             <span className="hidden md:flex items-center gap-1.5 whitespace-nowrap font-medium">
-              <Calendar size={13} className="text-[#dccd88]" /> Book a virtual appointment
-            </span>
-            <span className="hidden lg:flex items-center gap-1.5 whitespace-nowrap font-medium">
-              <Sparkles size={13} className="text-[#dccd88]" /> Customizable orders & hallmark pledge
+              <Calendar size={13} className="text-[#dccd88] shrink-0" /> Book a virtual appointment
             </span>
             <span className="flex items-center gap-1.5 whitespace-nowrap font-medium">
-              <ShieldCheck size={13} className="text-[#dccd88]" /> 100% BIS Hallmarked HUID Gold
+              <ShieldCheck size={13} className="text-[#dccd88] shrink-0" /> 100% BIS Hallmarked HUID Gold
             </span>
           </div>
 
-          <div className="flex items-center gap-3 ml-auto text-[#dccd88] font-serif text-xs">
+          <div className="flex items-center gap-3 ml-auto text-[#dccd88] font-serif text-xs shrink-0">
             <span>Ph: {SHOP_INFO.phone || '+91 98765 43210'}</span>
             <span className="text-[#cbadab]">•</span>
             <span>Krishnagiri &amp; Chennai</span>
           </div>
         </div>
+
+        {/* Mobile Single Clean Announcement */}
+        <div className="sm:hidden flex items-center justify-center text-center font-medium truncate gap-2 px-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#dccd88] shrink-0" />
+          <span className="truncate">100% BIS Hallmarked Gold • Insured Delivery</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#dccd88] shrink-0" />
+        </div>
       </div>
 
       {/* ── 2. Main Luxury Header & Navigation Bar ── */}
-      <header className="sticky top-0 z-40 bg-[#fefefe]/95 backdrop-blur-md border-b border-[#cbadab]/40 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-[#fefefe]/95 backdrop-blur-md border-b border-[#cbadab]/40 shadow-xs w-full max-w-full overflow-hidden">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
           
           {/* Brand Logo */}
-          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#551f1f] border border-[#dccd88] flex items-center justify-center shrink-0 shadow-sm">
-              <Gem size={22} className="text-[#ffffd6]" />
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#551f1f] border border-[#dccd88] flex items-center justify-center shrink-0 shadow-sm">
+              <Gem size={18} className="text-[#ffffd6] sm:hidden" />
+              <Gem size={22} className="text-[#ffffd6] hidden sm:block" />
             </div>
             <a href="#" className="flex flex-col justify-center shrink-0">
-              <span className="font-cinzel text-lg sm:text-xl lg:text-2xl font-black tracking-wider text-[#551f1f] uppercase whitespace-nowrap leading-none pb-1">
+              <span className="font-cinzel text-base sm:text-xl lg:text-2xl font-black tracking-wider text-[#551f1f] uppercase whitespace-nowrap leading-none pb-0.5">
                 VJS JEWELLERY
               </span>
-              <span className="text-[8.5px] sm:text-[9.5px] font-bold tracking-[0.2em] text-[#a49141] uppercase whitespace-nowrap leading-none">
-                Fine Jewellery &amp; Bullion • Est. 1994
+              <span className="hidden xs:block text-[8px] sm:text-[9.5px] font-bold tracking-[0.18em] text-[#a49141] uppercase whitespace-nowrap leading-none">
+                Fine Jewellery &amp; Bullion
               </span>
             </a>
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-5 xl:gap-7 text-xs xl:text-[13px] font-semibold tracking-wide text-gray-700 shrink-0">
+          <nav className="hidden lg:flex items-center gap-4 xl:gap-7 text-xs xl:text-[13px] font-semibold tracking-wide text-gray-700 shrink-0">
             <a href="#rates-section" className="text-[#551f1f] hover:text-[#551f1f] font-bold flex items-center gap-1.5 shrink-0 py-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>Today's Rates</span>
@@ -239,24 +245,24 @@ export default function LandingPage({
             <a href="#about-us" className="hover:text-[#551f1f] transition-colors shrink-0 py-1">About</a>
           </nav>
 
-          {/* Action CTAs: Live Bullion Pill + Staff Login + Calculator Trigger */}
-          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          {/* Action CTAs: Live Bullion Pill + Search + Wishlist + Hamburger */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Live Rate Pill Trigger */}
             <button
               onClick={onOpenBullionModal}
-              className="flex items-center gap-1.5 bg-[#ffffd6] hover:bg-[#dccd88]/40 border border-[#dccd88] text-[#551f1f] px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs cursor-pointer group shrink-0"
+              className="flex items-center gap-1 sm:gap-1.5 bg-[#ffffd6] hover:bg-[#dccd88]/40 border border-[#dccd88] text-[#551f1f] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all shadow-xs cursor-pointer group shrink-0"
               title="Click to view live India Bullion (IBJA) rates"
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="font-serif font-black whitespace-nowrap">22K: ₹{Math.round(gold22kObj.perGram || 11461).toLocaleString('en-IN')}</span>
-              <span className="hidden sm:inline text-[11px] text-[#551f1f]/70">| Silver ₹{Math.round(silverObj.perGram || 98)}</span>
-              <TrendingUp size={13} className="text-emerald-700 ml-0.5 group-hover:scale-110 transition-transform shrink-0" />
+              <span className="hidden md:inline text-[11px] text-[#551f1f]/70">| Silver ₹{Math.round(silverObj.perGram || 98)}</span>
+              <TrendingUp size={12} className="text-emerald-700 sm:ml-0.5 group-hover:scale-110 transition-transform shrink-0" />
             </button>
 
             {/* Quick Search */}
             <button
               onClick={() => setShowSearchModal(true)}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-[#cbadab]/30 text-gray-700 flex items-center justify-center transition-colors cursor-pointer"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-[#cbadab]/30 text-gray-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
               title="Search jewellery"
             >
               <Search size={15} />
@@ -265,7 +271,7 @@ export default function LandingPage({
             {/* Wishlist Icon matching Image 2 */}
             <a
               href="#categories"
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-[#cbadab]/30 text-gray-700 flex items-center justify-center transition-colors cursor-pointer"
+              className="hidden sm:flex w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-[#cbadab]/30 text-gray-700 items-center justify-center transition-colors cursor-pointer shrink-0"
               title="Saved Collections"
             >
               <Heart size={15} />
@@ -274,7 +280,7 @@ export default function LandingPage({
             {/* Mobile Menu Hamburger Button */}
             <button
               onClick={() => setMobileNavOpen(true)}
-              className="xl:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-[#cbadab]/30 text-gray-800 flex items-center justify-center transition-colors cursor-pointer"
+              className="lg:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#551f1f] text-[#ffffd6] hover:bg-[#421616] flex items-center justify-center transition-colors cursor-pointer shadow-xs shrink-0"
               title="Open Navigation Menu"
             >
               <Menu size={17} />
