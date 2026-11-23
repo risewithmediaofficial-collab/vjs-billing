@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from
 import './index.css';
 import { STORES } from './data.js';
 import { ToastProvider, useToast } from './ToastContext.jsx';
-import { Menu, X, Lock, ShieldAlert, Key, Eye, EyeOff, Loader2, AlertCircle, Keyboard } from 'lucide-react';
+import { Menu, X, Lock, ShieldAlert, Key, Eye, EyeOff, Loader2, AlertCircle, Keyboard, Coins, Globe, ExternalLink, Sparkles, User } from 'lucide-react';
 import {
   authApi, productsApi, billsApi, loansApi, staffApi, settingsApi, schemesApi, activityLogsApi,
   getToken, getCurrentUser, setCurrentUser, clearToken,
 } from './api.js';
 import LoginScreen from './components/LoginScreen.jsx';
+import LandingPage from './components/LandingPage.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import BillingPage from './components/BillingPage.jsx';
@@ -23,16 +24,113 @@ const LoansPage = lazy(() => import('./components/LoansPage.jsx'));
 const SchemesPage = lazy(() => import('./components/SchemesPage.jsx'));
 const AuditTrailPage = lazy(() => import('./components/AuditTrailPage.jsx'));
 const KeyboardShortcutsModal = lazy(() => import('./components/KeyboardShortcutsModal.jsx'));
+const BullionRatesModal = lazy(() => import('./components/BullionRatesModal.jsx'));
 
 import useScrollLock, { getScrollLockCount } from './useScrollLock.js';
+
+// ── Valid portal tab names and Route Parser ────────────────────────────────
+export const VALID_TABS = [
+  'dashboard',
+  'billing',
+  'invoices',
+  'loans',
+  'schemes',
+  'inventory',
+  'secret-inventory',
+  'audit-trail',
+  'staff',
+  'settings'
+];
+
+export function parseLocation(
+  pathname = (typeof window !== 'undefined' ? window.location.pathname : '/'),
+  search = (typeof window !== 'undefined' ? window.location.search : '')
+) {
+  const cleanPath = (pathname || '/').replace(/\/+$/, '') || '/';
+  const lowerPath = cleanPath.toLowerCase();
+
+  // Root or public storefront
+  if (lowerPath === '' || lowerPath === '/' || lowerPath === '/home' || lowerPath === '/store') {
+    return { type: 'storefront', path: '/', tab: null, redirect: null };
+  }
+
+  // Staff login screen
+  if (lowerPath === '/login' || lowerPath === '/signin') {
+    const params = new URLSearchParams(search || '');
+    const redirect = params.get('redirect') || null;
+    return { type: 'login', path: '/login', tab: null, redirect };
+  }
+
+  // Secret vault aliases
+  if (lowerPath === '/inventory1' || lowerPath === '/invetory1' || lowerPath === '/secret-inventory') {
+    return { type: 'portal', tab: 'secret-inventory', path: '/secret-inventory', redirect: null };
+  }
+
+  // New bill aliases
+  if (lowerPath === '/new-bill' || lowerPath === '/bill' || lowerPath === '/billing') {
+    return { type: 'portal', tab: 'billing', path: '/billing', redirect: null };
+  }
+
+  // Valid internal portal tabs
+  const segment = lowerPath.slice(1);
+  if (VALID_TABS.includes(segment)) {
+    return { type: 'portal', tab: segment, path: '/' + segment, redirect: null };
+  }
+
+  // Default fallback to storefront
+  return { type: 'storefront', path: '/', tab: null, redirect: null };
+}
 
 // ── Inner app wrapped by ToastProvider ────────────────────────────────────────
 function AppInner() {
   const toast = useToast();
 
   const [currentStaff, setCurrentStaff] = useState(() => getCurrentUser());
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [route, setRoute] = useState(() => parseLocation());
+
+  const navigate = useCallback((to, replace = false) => {
+    if (typeof window === 'undefined') return;
+    if (replace) {
+      window.history.replaceState(null, '', to);
+    } else {
+      window.history.pushState(null, '', to);
+    }
+    setRoute(parseLocation(window.location.pathname, window.location.search));
+  }, []);
+
+  const setActiveTab = useCallback((tab) => {
+    navigate('/' + tab);
+  }, [navigate]);
+
+  const activeTab = route.type === 'portal' ? (route.tab || 'dashboard') : 'dashboard';
+
+  // Listen to popstate event (browser Back / Forward buttons)
+  useEffect(() => {
+    const handlePopState = () => {
+      setRoute(parseLocation(window.location.pathname, window.location.search));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Protected Route Guard:
+  // If not logged in and requesting a protected portal view, redirect to /login with redirect query param
+  useEffect(() => {
+    if (!currentStaff && route.type === 'portal') {
+      navigate(`/login?redirect=${encodeURIComponent(route.path)}`, true);
+    }
+  }, [currentStaff, route, navigate]);
+
+  // Logged-in staff visiting /login -> auto-redirect to intended target or /billing
+  useEffect(() => {
+    if (currentStaff && route.type === 'login') {
+      const target = route.redirect || '/billing';
+      navigate(target, true);
+    }
+  }, [currentStaff, route, navigate]);
+
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [showBullionModal, setShowBullionModal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth < 1024;
@@ -161,8 +259,6 @@ function AppInner() {
     if (isSecretPath) {
       if (!isSecretVaultAuth) {
         setShowSecretAuthModal(true);
-      } else {
-        setActiveTab('secret-inventory');
       }
     }
   }, [isSecretVaultAuth]);
@@ -212,10 +308,7 @@ function AppInner() {
         setIsSecretVaultAuth(true);
         setShowSecretAuthModal(false);
         setSecretPinInput('');
-        setActiveTab('secret-inventory');
-        if (!window.location.pathname.includes('inventory1')) {
-          window.history.pushState(null, '', '/inventory1');
-        }
+        navigate('/secret-inventory');
         toast.success('Login successful!');
       } else {
         setSecretAuthError('Invalid username or password.');
@@ -231,20 +324,12 @@ function AppInner() {
     setShowSecretAuthModal(false);
     setSecretPinInput('');
     setSecretAuthError('');
-    if (activeTab === 'secret-inventory') {
-      setActiveTab('dashboard');
-    }
-    if (window.location.pathname.includes('inventory1') || window.location.pathname.includes('invetory1')) {
-      window.history.pushState(null, '', '/');
-    }
+    navigate('/dashboard');
   };
 
   const handleLockSecretVault = () => {
     setIsSecretVaultAuth(false);
-    setActiveTab('dashboard');
-    if (window.location.pathname.includes('inventory1') || window.location.pathname.includes('invetory1')) {
-      window.history.pushState(null, '', '/');
-    }
+    navigate('/dashboard');
     toast.info('Secret Vault locked.');
   };
 
@@ -307,20 +392,21 @@ function AppInner() {
     setCurrentUser(staffMember);
     if (staffMember.storeId) setCurrentStore(staffMember.storeId);
     toast.success(`Welcome back, ${staffMember.name}!`);
+    const target = route.redirect || '/billing';
+    navigate(target, true);
   };
 
   const handleLogout = () => {
     clearToken();
     setCurrentStaff(null);
-    setActiveTab('dashboard');
     setProducts([]);
     setBills([]);
     setStaff([]);
     setLoans([]);
     setSchemes([]);
     setActivityLogs([]);
-    // Toast won't show after logout since LoginScreen replaces the app —
-    // but we keep the call for completeness (it's harmless)
+    navigate('/login', true);
+    toast.info('Logged out successfully.');
   };
 
   // ── Bill creation ──────────────────────────────────────────────────────────
@@ -572,15 +658,74 @@ function AppInner() {
 
   // ── Derived (must be before early return to satisfy Rules of Hooks) ────────
   const storeProducts = useMemo(() => products.filter(p => p.storeId === currentStore), [products, currentStore]);
+  const storeNonSecretProducts = useMemo(() => storeProducts.filter(p => !p.isSecret), [storeProducts]);
   const storeBills    = useMemo(() => bills.filter(b => b.storeId === currentStore), [bills, currentStore]);
   const storeLoans    = useMemo(() => loans.filter(l => l.storeId === currentStore), [loans, currentStore]);
   const storeSchemes  = useMemo(() => schemes.filter(s => s.storeId === currentStore), [schemes, currentStore]);
   const canSwitchStore = currentStaff?.role === 'Admin';
   const sidebarWidth   = sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64';
 
-  // ── Not logged in ──────────────────────────────────────────────────────────
+  // ── 1. Unauthenticated Visitor: Show Login screen if /login, else Storefront ──
   if (!currentStaff) {
-    return <LoginScreen onLogin={handleLogin} />;
+    if (route.type === 'login') {
+      return (
+        <LoginScreen 
+          onLogin={handleLogin} 
+          onBackToLanding={() => navigate('/')} 
+          redirectReason={route.redirect ? `Please sign in to access ${route.redirect}` : null}
+        />
+      );
+    }
+    return (
+      <>
+        <LandingPage
+          onOpenStaffLogin={() => navigate('/login')}
+          onOpenBullionModal={() => setShowBullionModal(true)}
+          currentStaff={null}
+          goldRate={goldRate}
+          silverRate={silverRate}
+        />
+        {showBullionModal && (
+          <Suspense fallback={null}>
+            <BullionRatesModal
+              onClose={() => setShowBullionModal(false)}
+              currentStore={currentStore}
+              onRatesApplied={({ goldRate: newGold, silverRate: newSilver }) => {
+                if (newGold) setGoldRateState(newGold);
+                if (newSilver) setSilverRateState(newSilver);
+              }}
+            />
+          </Suspense>
+        )}
+      </>
+    );
+  }
+
+  // ── 2. Authenticated Staff: Previewing Public Storefront (`/`) ──────────────
+  if (route.type === 'storefront') {
+    return (
+      <div className="relative">
+        <LandingPage
+          onOpenStaffLogin={() => navigate('/login')}
+          onOpenBullionModal={() => setShowBullionModal(true)}
+          currentStaff={currentStaff}
+          goldRate={goldRate}
+          silverRate={silverRate}
+        />
+        {showBullionModal && (
+          <Suspense fallback={null}>
+            <BullionRatesModal
+              onClose={() => setShowBullionModal(false)}
+              currentStore={currentStore}
+              onRatesApplied={({ goldRate: newGold, silverRate: newSilver }) => {
+                if (newGold) setGoldRateState(newGold);
+                if (newSilver) setSilverRateState(newSilver);
+              }}
+            />
+          </Suspense>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -656,18 +801,43 @@ function AppInner() {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
               )}
-              {/* Compact Gold rate pill on mobile */}
-              <div className="sm:hidden flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+              {/* Live IBJA Bullion Rates trigger button */}
+              <button
+                type="button"
+                onClick={() => setShowBullionModal(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 sm:py-1.5 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-bold text-xs shadow-xs transition-all cursor-pointer"
+                title="View live India Bullion (IBJA) market rates"
+              >
+                <Coins size={14} className="stroke-[2.5]" />
+                <span className="hidden sm:inline">IBJA Rates</span>
+              </button>
+
+              {/* Compact Gold rate pill on mobile (clickable) */}
+              <div
+                onClick={() => setShowBullionModal(true)}
+                className="sm:hidden flex items-center gap-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg px-2 py-1 cursor-pointer transition-colors"
+                title="Click to view live India Bullion rates"
+              >
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                 <span className="text-amber-800 font-bold text-[11px]">₹{goldRate.toLocaleString('en-IN')}/g</span>
               </div>
-              {/* Gold rate badge for desktop */}
-              <div className="hidden sm:flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
+
+              {/* Gold rate badge for desktop (clickable) */}
+              <div 
+                onClick={() => setShowBullionModal(true)}
+                className="hidden sm:flex items-center gap-2 bg-amber-50 hover:bg-amber-100/80 border border-amber-200 rounded-xl px-3 py-1.5 cursor-pointer transition-colors"
+                title="Live store 22K rate. Click to view IBJA market rates."
+              >
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                 <span className="text-amber-700 font-semibold text-sm">Gold ₹{goldRate.toLocaleString('en-IN')}/g</span>
               </div>
-              {/* Silver rate badge for desktop */}
-              <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-blue-200 rounded-xl px-3 py-1.5">
+
+              {/* Silver rate badge for desktop (clickable) */}
+              <div 
+                onClick={() => setShowBullionModal(true)}
+                className="hidden md:flex items-center gap-2 bg-slate-50 hover:bg-blue-100/60 border border-blue-200 rounded-xl px-3 py-1.5 cursor-pointer transition-colors"
+                title="Live store silver rate. Click to view IBJA market rates."
+              >
                 <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
                 <span className="text-blue-700 font-semibold text-sm">Silver ₹{silverRate.toLocaleString('en-IN')}/g</span>
               </div>
@@ -690,6 +860,17 @@ function AppInner() {
                 <span className="hidden md:inline">Shortcuts</span>
                 <kbd className="px-1.5 py-0.2 text-[10px] font-mono font-bold bg-white border border-gray-300 rounded shadow-xs text-gray-500">?</kbd>
               </button>
+
+              {/* View Storefront Website Button */}
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-[#ffffd6] hover:bg-[#dccd88]/50 border border-[#dccd88] text-[#551f1f] rounded-xl font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                title="View Public Storefront Website"
+              >
+                <Globe size={14} className="text-[#551f1f]" />
+                <span className="hidden lg:inline">Storefront</span>
+              </button>
             </div>
           </div>
         </div>
@@ -705,7 +886,7 @@ function AppInner() {
             {activeTab === 'dashboard' && (
               <Dashboard
                 bills={storeBills}
-                products={storeProducts.filter(p => !p.isSecret)}
+                products={storeNonSecretProducts}
                 staff={staff}
                 currentStaff={currentStaff}
                 onViewBill={setPreviewBill}
@@ -715,7 +896,7 @@ function AppInner() {
             )}
             {activeTab === 'billing' && (
               <BillingPage
-                products={storeProducts.filter(p => !p.isSecret)}
+                products={storeNonSecretProducts}
                 bills={storeBills}
                 currentStaff={currentStaff}
                 onGenerateBill={handleGenerateBill}
@@ -760,7 +941,7 @@ function AppInner() {
             )}
             {activeTab === 'inventory' && (
               <InventoryPage
-                products={products.filter(p => !p.isSecret)}
+                products={storeNonSecretProducts}
                 onCreateProduct={handleCreateProduct}
                 onUpdateProduct={handleUpdateProduct}
                 onDeleteProduct={handleDeleteProduct}
@@ -821,80 +1002,92 @@ function AppInner() {
 
       {/* User Login Modal for Path Authentication */}
       {showSecretAuthModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full border border-gray-200 shadow-2xl overflow-hidden animate-scale-up">
-            <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-6 text-center relative">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-white mx-auto mb-3 shadow-inner">
-                <Lock size={28} />
-              </div>
-              <h3 className="text-xl font-bold font-display text-white">User Verification</h3>
-              <p className="text-xs text-amber-100 mt-1">
-                Please enter your login username and password to access this page.
-              </p>
-            </div>
-
-            <form onSubmit={handleVerifySecretVault} className="p-6 space-y-4">
-              {secretAuthError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2">
-                  <ShieldAlert size={16} className="shrink-0 text-red-600" />
-                  {secretAuthError}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={secretUserInput}
-                  onChange={(e) => setSecretUserInput(e.target.value)}
-                  placeholder="Enter Username"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Password / PIN
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPasswordToggle ? "text" : "password"}
-                    value={secretPinInput}
-                    onChange={(e) => setSecretPinInput(e.target.value)}
-                    placeholder="Enter Password or PIN"
-                    autoFocus
-                    className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 font-medium"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordToggle(!showPasswordToggle)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPasswordToggle ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex justify-end z-50 transition-opacity"
+          onClick={(e) => { if (e.target === e.currentTarget && !secretAuthLoading) handleCancelSecretAuth(); }}
+        >
+          <div className="bg-white h-full border-l border-gray-200 max-w-md w-full shadow-2xl overflow-hidden animate-drawer-right rounded-l-2xl sm:rounded-l-3xl flex flex-col justify-between">
+            <div>
+              <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-8 text-center relative shrink-0">
                 <button
                   type="button"
                   onClick={handleCancelSecretAuth}
-                  className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors cursor-pointer"
                 >
-                  Cancel
+                  <X size={16} />
                 </button>
-                <button
-                  type="submit"
-                  disabled={secretAuthLoading}
-                  className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {secretAuthLoading ? <Loader2 size={18} className="animate-spin" /> : <Key size={18} />}
-                  Login
-                </button>
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-white mx-auto mb-3 shadow-inner">
+                  <Lock size={28} />
+                </div>
+                <h3 className="text-xl font-bold font-display text-white">User Verification</h3>
+                <p className="text-xs text-amber-100 mt-1">
+                  Please enter your login username and password to access this page.
+                </p>
               </div>
-            </form>
+
+              <form onSubmit={handleVerifySecretVault} className="p-6 space-y-4">
+                {secretAuthError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2">
+                    <ShieldAlert size={16} className="shrink-0 text-red-600" />
+                    {secretAuthError}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    value={secretUserInput}
+                    onChange={(e) => setSecretUserInput(e.target.value)}
+                    placeholder="Enter Username"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Password / PIN
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPasswordToggle ? "text" : "password"}
+                      value={secretPinInput}
+                      onChange={(e) => setSecretPinInput(e.target.value)}
+                      placeholder="Enter Password or PIN"
+                      autoFocus
+                      className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordToggle(!showPasswordToggle)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPasswordToggle ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleCancelSecretAuth}
+                    className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={secretAuthLoading}
+                    className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {secretAuthLoading ? <Loader2 size={18} className="animate-spin" /> : <Key size={18} />}
+                    Login
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
@@ -904,6 +1097,21 @@ function AppInner() {
         isOpen={showShortcutsModal}
         onClose={() => setShowShortcutsModal(false)}
       />
+
+      {/* Live India Bullion Benchmark Rates (IBJA) Modal */}
+      {showBullionModal && (
+        <Suspense fallback={null}>
+          <BullionRatesModal
+            currentStore={currentStore}
+            onClose={() => setShowBullionModal(false)}
+            onRatesApplied={(newGold, newSilver) => {
+              if (newGold) handleUpdateGoldRate(newGold);
+              if (newSilver) handleUpdateSilverRate(newSilver);
+              toast.success(`Store rates updated: Gold ₹${newGold}/g, Silver ₹${newSilver}/g`);
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

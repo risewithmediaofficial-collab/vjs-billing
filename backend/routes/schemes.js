@@ -10,7 +10,7 @@ router.get('/', auth, async (req, res) => {
   try {
     const filter = {};
     if (req.query.storeId) filter.storeId = req.query.storeId;
-    const enrollments = await SchemeEnrollment.find(filter).sort({ createdAt: -1 });
+    const enrollments = await SchemeEnrollment.find(filter).sort({ createdAt: -1 }).lean();
     res.json(enrollments);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch scheme enrollments.' });

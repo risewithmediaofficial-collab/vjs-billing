@@ -104,12 +104,12 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white border border-gray-200 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden text-gray-800">
+      <div className="bg-white border-l border-gray-200 rounded-l-2xl sm:rounded-l-3xl shadow-2xl w-full max-w-2xl sm:max-w-3xl h-full flex flex-col overflow-hidden text-gray-800 animate-drawer-right">
         {/* Header */}
         <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-amber-50/50 via-white to-orange-50/40">
           <div className="flex items-center gap-3">

@@ -172,3 +172,10 @@ export const schemesApi = {
 export const activityLogsApi = {
   getAll: (storeId) => request(`/activity-logs${storeId ? `?storeId=${storeId}` : ''}`),
 };
+
+// ── India Bullion Rates (IBJA) ───────────────────────────────────────────────
+export const bullionApi = {
+  getLatest: () => request('/bullion/latest'),
+  refresh: () => request('/bullion/refresh', { method: 'POST' }),
+  applyToStore: (storeId) => request('/bullion/apply-to-store', { method: 'POST', body: JSON.stringify({ storeId }) }),
+};

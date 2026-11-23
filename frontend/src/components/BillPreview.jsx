@@ -477,6 +477,10 @@ export function BillBacksideTerms({ shopInfo = SHOP_INFO }) {
                 <span className="font-bold text-amber-600 shrink-0">7.</span>
                 <span>மேற்கண்ட விதிமுறைகள் யாவும் எங்களது நிர்வாக சட்டதிட்டங்களுக்கு உட்பட்டதாகும்.</span>
               </li>
+              <li className="flex items-start gap-2">
+                <span className="font-bold text-amber-600 shrink-0">8.</span>
+                <span className="font-semibold text-amber-950">பழைய தங்கம் மற்றும் வெள்ளி நகைகள் பரிமாற்றம் அன்றைய மார்க்கெட் விலை மற்றும் அரசு ஜி.எஸ்.டி (GST) விகிதத்தின்படி கணக்கிடப்படும்.</span>
+              </li>
             </ol>
           </div>
         </div>
@@ -524,6 +528,10 @@ export function BillBacksideTerms({ shopInfo = SHOP_INFO }) {
               <li className="flex items-start gap-2">
                 <span className="font-bold text-amber-600 shrink-0">7.</span>
                 <span>Terms and conditions are subject to change without notice.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="font-bold text-amber-600 shrink-0">8.</span>
+                <span className="font-semibold text-amber-950">Old gold and silver exchange/purchase is calculated based on current market rate and applicable GST rules.</span>
               </li>
             </ol>
           </div>
@@ -636,10 +644,13 @@ export default function BillPreview({ bill, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-6 px-3 sm:px-4">
-      <div className="w-full max-w-3xl bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-gray-200 animate-fade-in my-auto">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+    <div 
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-3xl sm:max-w-3xl md:max-w-4xl bg-white h-full shadow-2xl flex flex-col border-l border-gray-200 overflow-hidden animate-drawer-right rounded-l-2xl sm:rounded-l-3xl">
+        {/* Drawer Header */}
+        <div className="shrink-0 p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white">
           <div>
             <h2 className="text-gray-900 font-extrabold text-lg sm:text-xl font-display">
               {viewMode === 'quotation' ? 'Quotation / Rough Bill Preview' : 'Tax Invoice Preview'}
@@ -650,11 +661,13 @@ export default function BillPreview({ bill, onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
+            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
         </div>
+
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5">
 
         {/* Bill Type Switcher */}
         <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl mb-2.5">
@@ -780,10 +793,11 @@ export default function BillPreview({ bill, onClose }) {
         </div>
 
         {/* Bottom helper text */}
-        <p className="text-center text-gray-400 text-[11px] mt-3 flex items-center justify-center gap-1.5">
+        <p className="text-center text-gray-400 text-[11px] mt-3 flex items-center justify-center gap-1.5 pb-2">
           <Sparkles size={12} className="text-amber-500 shrink-0" />
           <span>You can view and print <b>Front Side</b>, <b>Back Side (Terms & Conditions in Tamil & English)</b>, or <b>Both Sides</b>.</span>
         </p>
+        </div>
       </div>
     </div>
   );

@@ -222,6 +222,7 @@ export const JEWEL_LOAN_TERMS = [
 ];
 
 // ─── Tamil Terms & Conditions for Backside of Jewel Loan Card Bill ────────────
+// Important points selected by management: 1, 2, 3, 4 (sequentially numbered)
 export const JEWEL_LOAN_TAMIL_TERMS = [
   {
     num: 1,
@@ -229,23 +230,59 @@ export const JEWEL_LOAN_TAMIL_TERMS = [
   },
   {
     num: 2,
-    text: 'நகையை அடகு வைத்தவர்கள் நகைக் கடன் திட்டத்தில் குறிப்பிட்டுள்ள நிலுவைத் தேதிக்குள் முழுப்பணத்தை செலுத்தி நகையை மீட்டுக் கொள்ளவேண்டும் அல்லது புதுப்பித்துக் கொள்ளவேண்டும்.',
+    text: 'நகைக் கடன் பெற்று 30 நாட்களுக்குள் நகைக்கடன் பைசல் செய்தால், பகுதி அசல் செலுத்தியிருந்தாலும் கடன் பெற்ற தொகைக்கு 30 நாட்களுக்கு உண்டான முழு வட்டித் தொகை செலுத்த வேண்டும்.',
   },
   {
     num: 3,
-    text: 'நகைக்கடன் பெற்ற 30 நாட்களுக்குள் பைசல் செய்தால், பகுதி அசல் செலுத்தியிருந்தாலும் கடன் பெற்ற தொகைக்கு 30 நாட்களுக்கு உண்டான வட்டி வசூலிக்கப்படும்.',
+    text: 'நகைகளின் பேரில் கடன் வாங்கும் நபர் மனுவில் எழுதியுள்ள குடியிருப்பை விட்டு வேறு இடம் மாறினாலோ அல்லது செல்போன் எண்ணை மாற்றினாலோ புதிய இடத்தின் முகவரி மற்றும் செல்போன் எண்ணை உடனடியாக நிர்வாகத்திற்கு தெரிவிக்க வேண்டும். அவ்வாறு தெரிவிக்கத் தவறினால் அதனால் ஏற்படும் விளைவுகளுக்கு நிர்வாகம் பொறுப்பு ஏற்காது.',
   },
   {
     num: 4,
-    text: 'அடகுவைத்த நகை அடமானம் வைத்த நபரிடம் மட்டுமே திருப்பிக் கொடுக்கப்படும்.',
+    text: 'நகைக் கடன் தொடர்பான தகவல்கள் நோட்டீஸ் மூலமாகவும் அல்லது நிறுவனத்தின் / வங்கியின் விண்ணப்பத்தில் பதிவு செய்யப்பட்டுள்ள தங்களின் எண்ணிற்கு குறுஞ்செய்தி SMS அல்லது Whatsapp மூலம் தெரிவிக்கப்படும்.',
+  },
+];
+
+// Complete 10 Rules for Jewel Loan (from official documentation)
+export const JEWEL_LOAN_ALL_TAMIL_TERMS = [
+  {
+    num: 1,
+    text: 'பங்குதாரர்கள் தங்களுக்கு சொந்தமான நகைகளை மட்டுமே அடகு வைக்க வேண்டும்.',
+  },
+  {
+    num: 2,
+    text: 'நகையை அடகு வைத்தவர்கள் கடன் திட்டத்தில் குறிப்பிடப்பட்டுள்ள நிலுவைத் தேதிக்குள் முழுப்பணத்தை செலுத்தி நகையை மீட்டுக் கொள்ளவேண்டும் அல்லது புதுப்பித்துக் கொள்ளவேண்டும்.',
+  },
+  {
+    num: 3,
+    text: 'நகைகளுக்கான பகுதி அசலை செலுத்த வேண்டுமானால் முந்தைய நாள் வரையிலான வட்டியை செலுத்த வேண்டும்.',
+  },
+  {
+    num: 4,
+    text: 'நகைக் கடன் பெற்று 30 நாட்களுக்குள் நகைக்கடன் பைசல் செய்தால், பகுதி அசல் செலுத்தியிருந்தாலும் கடன் பெற்ற தொகைக்கு 30 நாட்களுக்கு உண்டான முழு வட்டித் தொகை செலுத்த வேண்டும்.',
   },
   {
     num: 5,
-    text: 'நகைகளின் பேரில் கடன் வாங்கும் நபர் மனுவில் எழுதிக் கொடுத்துள்ள குடியிருப்பை விட்டு வேறு இடம் மாறினாலோ அல்லது செல்போன் எண்ணை மாற்றினாலோ புதிய இடத்தின் முகவரி மற்றும் செல்போன் எண்ணை எழுத்து மூலமாய் மேலாளருக்கு தெரியப்படுத்த வேண்டும். அவ்வாறு தெரிவிக்கத் தவறினால் அதனால் ஏற்படும் விளைவுகளுக்கு நிர்வாகம் பொறுப்பு ஏற்காது.',
+    text: 'கடன் தொகைக்கு வட்டியை முழுமையாக செலுத்தியிருந்தாலும், பகுதி அசலை செலுத்தியிருந்தாலும் நிலுவைத் தேதிக்குள் கடனை பைசல் செய்ய அல்லது புதுப்பிக்கத் தவறினால் நகைக் கடன் திட்டத்தில் குறிப்பிட்டபடி வட்டி விகிதத்தை மாற்றி அனைத்து பைசல்/புதுப்பித்தல்/ஏலம் மூலம் வசூலிக்கப்படும்.',
   },
   {
     num: 6,
-    text: 'நகைக்கடன் தொடர்பான தகவல்கள் நோட்டீஸ் மூலமாகவும் அல்லது எங்களின் விண்ணப்பத்தில் பதிவு செய்யப்பட்டுள்ள தங்களின் எண்ணிற்கு குறுஞ்செய்தி SMS அல்லது Whatsapp மூலம் தெரிவிக்கப்படும்.',
+    text: 'நகைக் கடன் திட்டத்தில் குறிப்பிடப்பட்டுள்ள தேதிக்குள் கடனை பைசல்/புதுப்பிக்கத் தவறினால் நகையை பொது ஏலம் அல்லது தனியாரிடம் விற்று கடனை பைசல் செய்வதற்கு நிர்வாகத்திற்கு உரிமை உண்டு.',
+  },
+  {
+    num: 7,
+    text: 'அடகுவைத்த நகை அடமானம் வைத்த நபரிடம் மட்டுமே திரும்பக் கொடுக்கப்படும்.',
+  },
+  {
+    num: 8,
+    text: 'நகைகளின் பேரில் கடன் வாங்கும் நபர் மனுவில் எழுதியுள்ள குடியிருப்பை விட்டு வேறு இடம் மாறினாலோ அல்லது செல்போன் எண்ணை மாற்றினாலோ புதிய இடத்தின் முகவரி மற்றும் செல்போன் எண்ணை உடனடியாக நிர்வாகத்திற்கு தெரிவிக்க வேண்டும். அவ்வாறு தெரிவிக்கத் தவறினால் அதனால் ஏற்படும் விளைவுகளுக்கு நிர்வாகம் பொறுப்பு ஏற்காது.',
+  },
+  {
+    num: 9,
+    text: 'நகையை மீட்கும்போது பாஸ் புத்தகத்தை கண்டிப்பாக கொடுக்க வேண்டும். பாஸ் புத்தகம் தொலைந்துவிட்டால் நகையை மீட்பதற்கு இழப்பீடு பத்திரம் கொடுக்கப்பட வேண்டும்.',
+  },
+  {
+    num: 10,
+    text: 'நகைக் கடன் தொடர்பான தகவல்கள் நோட்டீஸ் மூலமாகவும் அல்லது நிறுவனத்தின் / வங்கியின் விண்ணப்பத்தில் பதிவு செய்யப்பட்டுள்ள தங்களின் எண்ணிற்கு குறுஞ்செய்தி SMS அல்லது Whatsapp மூலம் தெரிவிக்கப்படும்.',
   },
 ];
 
@@ -374,18 +411,21 @@ export const SAVINGS_SCHEME_BENEFITS = [
 // ─── Office Hours & Schedule for Jewel Loan Card Backside ──────────────────────
 export const JEWEL_LOAN_OFFICE_HOURS = {
   title: 'அலுவலக நேரம்',
-  mainBranches: {
-    title: 'சென்னை கிளைகள்',
-    weekdays: 'திங்கள் முதல் சனிக்கிழமை வரை : காலை 9.00 மணி முதல் மாலை 4.00 மணி வரை',
-    sunday: 'ஞாயிற்றுக்கிழமை : காலை 9.00 மணி முதல் 12.30 மணி வரை',
-  },
-  otherBranches: {
-    title: 'மற்ற கிளைகள்',
-    weekdays: 'திங்கள் முதல் சனிக்கிழமை வரை : காலை 9.30 மணி முதல் மாலை 4.30 மணி வரை',
-    sunday: 'ஞாயிற்றுக்கிழமை : காலை 9.30 மணி முதல் 1.00 மணி வரை',
-  },
+  workingHours: 'வாரம் முழுவதும் அனைத்து நாட்களும் : காலை 9.00 மணி முதல் இரவு 9.00 மணி வரை (Week full 9am to 9pm all days)',
   weeklyHoliday: 'வார விடுமுறை : Monday (திங்கட்கிழமை)',
   authority: 'நிர்வாக இயக்குநர்',
+  // Backward compatibility fields
+  mainBranches: {
+    title: 'வாரம் முழுவதும் (All Days)',
+    weekdays: 'காலை 9.00 மணி முதல் இரவு 9.00 மணி வரை',
+    sunday: 'காலை 9.00 மணி முதல் இரவு 9.00 மணி வரை',
+  },
+  otherBranches: {
+    title: 'விடுமுறை (Holiday)',
+    weekdays: 'வார விடுமுறை : திங்கட்கிழமை (Monday)',
+    sunday: 'ஞாயிறு உட்பட அனைத்து நாட்களும் இயங்கும்',
+  },
+  lunchBreak: 'Week full 9:00 AM to 9:00 PM All Days',
 };
 
 // ─── Jewel Loan Passbook Cover & Shop Details ──────────────────────────────────
@@ -459,7 +499,8 @@ export function getLoanDueDate(loan) {
 }
 
 // Calculate simple & overdue interest based on monthly rate and due date
-// If total duration < 1 month, defaults to 1 month minimum interest
+// Rule: 30 days minimum full interest ("30 days mulu thogai selutha vendum")
+// If total duration <= 30 days, 1 month full interest is charged.
 export function calculateLoanInterest(principal, standardRatePerMonth, issueDateStr, settlementDateStr, overdueRatePerMonth = null, dueDateStr = null, tenureMonths = 12) {
   const issue = new Date(issueDateStr);
   const settle = new Date(settlementDateStr || new Date());
@@ -481,6 +522,8 @@ export function calculateLoanInterest(principal, standardRatePerMonth, issueDate
   const totalMs = Math.max(0, settle - issue);
   const totalDays = Math.ceil(totalMs / (1000 * 60 * 60 * 24));
   let totalMonths = totalDays / 30;
+  // 30 days minimum rule: if loan closed within 30 days, pay full 30 days / 1 month interest
+  const isMinimumPeriod = totalDays <= 30;
   if (totalMonths < 1) totalMonths = 1;
 
   const isOverdue = due ? settle > due : false;
@@ -499,6 +542,7 @@ export function calculateLoanInterest(principal, standardRatePerMonth, issueDate
   const totalInterest = normalInterest + overdueInterest;
 
   return {
+    days: totalDays,
     months: totalMonths.toFixed(1),
     normalMonths: normalMonths.toFixed(1),
     overdueMonths: overdueMonths.toFixed(1),
@@ -507,6 +551,7 @@ export function calculateLoanInterest(principal, standardRatePerMonth, issueDate
     interestAmount: Math.round(totalInterest),
     totalRepayment: Math.round(principal + totalInterest),
     isOverdue,
+    isMinimumPeriod,
     dueDate: due,
   };
 }

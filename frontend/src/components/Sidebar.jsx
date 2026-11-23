@@ -70,13 +70,13 @@ function SidebarComponent({ activeTab, setActiveTab, currentStaff, onLogout, col
       >
         {/* Logo & Close Button */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shrink-0 shadow-md shadow-amber-300/50">
-            <Gem size={20} className="text-white" />
+          <div className="w-10 h-10 rounded-xl bg-[#551f1f] border border-[#dccd88] flex items-center justify-center shrink-0 shadow-md">
+            <Gem size={20} className="text-[#ffffd6]" />
           </div>
           {!collapsed && (
             <div className="animate-fade-in overflow-hidden">
-              <p className="font-display text-lg font-bold text-gray-800 leading-tight">VJS</p>
-              <p className="text-xs text-amber-600 font-semibold tracking-widest">JEWELLERY</p>
+              <p className="font-cinzel text-lg font-black text-[#551f1f] leading-tight tracking-wider">VJS</p>
+              <p className="text-[10px] text-[#a49141] font-bold tracking-widest uppercase">JEWELLERY</p>
             </div>
           )}
           {!collapsed && (
@@ -103,21 +103,21 @@ function SidebarComponent({ activeTab, setActiveTab, currentStaff, onLogout, col
               }}
               className={`
                 w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                transition-colors duration-150 group relative
+                transition-colors duration-150 group relative cursor-pointer
                 ${activeTab === id
-                  ? 'bg-amber-50 text-amber-700 border border-amber-200 shadow-sm'
-                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800 border border-transparent'
+                  ? 'bg-[#ffffd6] text-[#551f1f] border border-[#dccd88] shadow-xs font-bold'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-transparent font-medium'
                 }
               `}
             >
-              <Icon size={20} className={`shrink-0 ${activeTab === id ? 'text-amber-600' : ''}`} />
+              <Icon size={20} className={`shrink-0 ${activeTab === id ? 'text-[#551f1f]' : 'text-gray-400 group-hover:text-gray-700'}`} />
               {!collapsed && (
-                <span className={`font-medium text-sm animate-fade-in truncate ${activeTab === id ? 'text-amber-700' : ''}`}>{label}</span>
+                <span className={`text-sm animate-fade-in truncate ${activeTab === id ? 'text-[#551f1f] font-bold' : ''}`}>{label}</span>
               )}
               {!collapsed && shortcut && (
                 <kbd className={`ml-auto text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded shadow-2xs border transition-colors ${
                   activeTab === id
-                    ? 'bg-amber-100/70 border-amber-300 text-amber-800'
+                    ? 'bg-white border-[#dccd88] text-[#551f1f]'
                     : 'bg-gray-100 group-hover:bg-white border-gray-200 text-gray-400 group-hover:text-gray-600'
                 }`}>
                   {shortcut}
@@ -125,11 +125,11 @@ function SidebarComponent({ activeTab, setActiveTab, currentStaff, onLogout, col
               )}
               {/* Tooltip for collapsed state */}
               {collapsed && (
-                <div className="absolute left-full ml-3 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg
+                <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#551f1f] text-[#ffffd6] text-xs rounded-lg
                   opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50
-                  border border-gray-700 shadow-xl transition-opacity flex items-center gap-2">
+                  border border-[#dccd88] shadow-xl transition-opacity flex items-center gap-2">
                   <span>{label}</span>
-                  {shortcut && <span className="text-amber-400 font-mono text-[10px] font-bold">{shortcut}</span>}
+                  {shortcut && <span className="text-[#dccd88] font-mono text-[10px] font-bold">{shortcut}</span>}
                 </div>
               )}
             </button>
@@ -140,7 +140,7 @@ function SidebarComponent({ activeTab, setActiveTab, currentStaff, onLogout, col
         {currentStaff && (
           <div className="p-3 border-t border-gray-100">
             <div className={`flex items-center gap-3 px-3 py-3 rounded-xl bg-gray-50 border border-gray-200`}>
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shrink-0 text-white font-bold text-sm shadow-sm">
+              <div className="w-9 h-9 rounded-full bg-[#551f1f] border border-[#dccd88] flex items-center justify-center shrink-0 text-[#ffffd6] font-bold text-sm shadow-sm">
                 {currentStaff.name.charAt(0)}
               </div>
               {!collapsed && (
@@ -157,7 +157,7 @@ function SidebarComponent({ activeTab, setActiveTab, currentStaff, onLogout, col
                     }
                     onLogout();
                   }}
-                  className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-gray-100"
+                  className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-gray-100 cursor-pointer"
                   title="Logout"
                 >
                   <LogOut size={16} />

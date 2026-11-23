@@ -11,4 +11,7 @@ const ActivityLogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// High-performance compound indexes for instant sorting & filtering
+ActivityLogSchema.index({ storeId: 1, createdAt: -1 });
+
 module.exports = mongoose.model('ActivityLog', ActivityLogSchema);

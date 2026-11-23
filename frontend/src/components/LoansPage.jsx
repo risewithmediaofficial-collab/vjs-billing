@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { 
   Wallet, Search, Plus, X, IndianRupee, Clock, 
   CheckCircle2, AlertTriangle, FileText, Printer, Camera, Image as ImageIcon, Loader2, User,
-  CreditCard, Calendar, RotateCw, Layers, RefreshCw, AlertCircle, Phone, Scissors
+  CreditCard, Calendar, RotateCw, Layers, RefreshCw, AlertCircle, Phone, Scissors,
+  CalendarRange, ArrowUpDown, SlidersHorizontal, RotateCcw, Trash2
 } from 'lucide-react';
 import { 
   calculateLoanInterest, calculateDueDate, getLoanDueDate, generateLoanNumber, 
   generateInvoiceNumber, formatCurrency, formatDate, SHOP_INFO, JEWEL_LOAN_TERMS,
-  JEWEL_LOAN_TAMIL_TERMS, JEWEL_LOAN_OFFICE_HOURS, JEWEL_LOAN_COMPANY_DETAILS 
+  JEWEL_LOAN_TAMIL_TERMS, JEWEL_LOAN_ALL_TAMIL_TERMS, JEWEL_LOAN_OFFICE_HOURS, JEWEL_LOAN_COMPANY_DETAILS 
 } from '../data.js';
 import useScrollLock from '../useScrollLock.js';
 
@@ -15,6 +16,8 @@ import useScrollLock from '../useScrollLock.js';
 function LoanCardBillPreview({ loan, initialSide = 'front', onClose }) {
   const [activeSide, setActiveSide] = useState(initialSide); // 'front' | 'back' | 'both'
   const [invertTopForFold, setInvertTopForFold] = useState(true); // Matches Photo 1 fold mechanics
+  const [rulesMode, setRulesMode] = useState('important'); // 'important' (4 rules) | 'all' (all 10 rules)
+  const termsToDisplay = rulesMode === 'all' ? JEWEL_LOAN_ALL_TAMIL_TERMS : JEWEL_LOAN_TAMIL_TERMS;
 
   useEffect(() => {
     setActiveSide(initialSide);
@@ -99,21 +102,25 @@ function LoanCardBillPreview({ loan, initialSide = 'front', onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-3 sm:py-8 px-2 sm:px-4">
-      <div className="w-full max-w-3xl bg-white rounded-2xl p-3.5 sm:p-6 shadow-2xl border border-gray-200 animate-fade-in my-auto">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-gray-100">
+    <div 
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-3xl sm:max-w-3xl md:max-w-4xl bg-white h-full shadow-2xl flex flex-col border-l border-gray-200 overflow-hidden animate-drawer-right rounded-l-2xl sm:rounded-l-3xl">
+        {/* Drawer Header */}
+        <div className="shrink-0 p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white">
           <div>
             <h2 className="text-gray-800 font-bold text-base sm:text-xl flex items-center gap-2">
               <CreditCard className="text-amber-500 shrink-0" size={18} /> Jewel Loan Card Bill & Passbook
             </h2>
             <p className="text-gray-400 text-xs mt-0.5">Loan #{loan.loanNumber} • Customer: {loan.customerName}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors shrink-0">
+          <button onClick={onClose} className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors shrink-0 cursor-pointer">
             <X size={18} />
           </button>
         </div>
 
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5">
         {/* View Mode Selector Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 sm:mb-4 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
           <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto">
@@ -145,21 +152,36 @@ function LoanCardBillPreview({ loan, initialSide = 'front', onClose }) {
             </button>
           </div>
 
-          {/* Passbook Fold Orientation Toggle for Backside */}
+          {/* Passbook Fold Orientation Toggle & Rules Mode for Backside */}
           {(activeSide === 'back' || activeSide === 'both') && (
-            <button
-              type="button"
-              onClick={() => setInvertTopForFold(!invertTopForFold)}
-              className={`w-full sm:w-auto px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 border select-none ${
-                invertTopForFold 
-                  ? 'bg-amber-50 text-amber-900 border-amber-300' 
-                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-              }`}
-              title={invertTopForFold ? "Top half inverted 180° so both outer sides are upright when folded (Photo 1)" : "Top half upright"}
-            >
-              <RotateCw size={12} className={invertTopForFold ? 'text-amber-600' : ''} />
-              <span>Passbook Fold Mode: {invertTopForFold ? 'Inverted 180° (On)' : 'Upright'}</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setInvertTopForFold(!invertTopForFold)}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 border select-none ${
+                  invertTopForFold 
+                    ? 'bg-amber-50 text-amber-900 border-amber-300' 
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                }`}
+                title={invertTopForFold ? "Top half inverted 180° so both outer sides are upright when folded (Photo 1)" : "Top half upright"}
+              >
+                <RotateCw size={12} className={invertTopForFold ? 'text-amber-600' : ''} />
+                <span>Fold: {invertTopForFold ? 'Inverted 180°' : 'Upright'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRulesMode(prev => prev === 'important' ? 'all' : 'important')}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 border select-none ${
+                  rulesMode === 'all'
+                    ? 'bg-blue-50 text-blue-900 border-blue-300'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+                title="Toggle between 4 Key Rules or All 10 Rules"
+              >
+                <Layers size={12} className={rulesMode === 'all' ? 'text-blue-600' : 'text-amber-600'} />
+                <span>விதிகள்: {rulesMode === 'all' ? 'அனைத்து 10 விதிகள்' : '4 முக்கிய குறிப்புகள்'}</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -635,16 +657,16 @@ function LoanCardBillPreview({ loan, initialSide = 'front', onClose }) {
                 </div>
 
                 {/* ─── BOTTOM PANEL: TAMIL TERMS & CONDITIONS (நகைக் கடன் விதிகள்) (Photo 2) ─── */}
-                <div className="space-y-3 pt-1">
+                <div className="space-y-2.5 pt-1">
                   <h4 className="font-bold text-center text-sm sm:text-base text-gray-950 border-b-2 border-gray-900 pb-1.5 tracking-wide">
-                    நகைக் கடன் விதிகள்
+                    நகைக் கடன் விதிகள் {rulesMode === 'all' ? '(அனைத்து விதிகள்)' : '(முக்கிய குறிப்புகள்)'}
                   </h4>
 
-                  {/* Selected Points: 1 to 6 Order Wise */}
-                  <div className="space-y-2 text-[11px] sm:text-xs text-gray-900 leading-relaxed text-justify">
-                    {JEWEL_LOAN_TAMIL_TERMS.map(({ num, text }) => (
-                      <div key={num} className="flex items-start gap-1.5">
-                        <span className="font-bold text-gray-900 shrink-0 min-w-[20px]">{num}.</span>
+                  {/* Rules list: 1, 2, 3, 4 sequentially */}
+                  <div className={`space-y-1.5 text-gray-900 leading-relaxed text-justify ${rulesMode === 'all' ? 'text-[9.5px] sm:text-[10px]' : 'text-[11px] sm:text-xs'}`}>
+                    {termsToDisplay.map(({ text }, idx) => (
+                      <div key={idx} className="flex items-start gap-1.5">
+                        <span className="font-bold text-gray-900 shrink-0 min-w-[20px]">{idx + 1}.</span>
                         <p className="flex-1">{text}</p>
                       </div>
                     ))}
@@ -659,43 +681,26 @@ function LoanCardBillPreview({ loan, initialSide = 'front', onClose }) {
                     </div>
                   </div>
 
-                  {/* Office Hours Table */}
-                  <div className="border border-gray-800 rounded mt-2 overflow-hidden text-[10.5px]">
-                    <div className="bg-gray-100 font-bold text-center py-1 border-b border-gray-800 text-xs text-gray-900">
+                  {/* Office Hours Box */}
+                  <div className="border border-gray-800 rounded mt-2 overflow-hidden text-[11px]">
+                    <div className="bg-gray-100 font-bold text-center py-1 border-b border-gray-800 text-xs text-gray-900 tracking-wider uppercase">
                       {JEWEL_LOAN_OFFICE_HOURS.title}
                     </div>
-                    <div className="grid grid-cols-2 divide-x divide-gray-800">
-                      {/* Main / City Branches */}
-                      <div className="p-2 space-y-1">
-                        <p className="font-bold text-center underline text-[11px] text-gray-900">
-                          {JEWEL_LOAN_OFFICE_HOURS.mainBranches.title}
-                        </p>
-                        <p>{JEWEL_LOAN_OFFICE_HOURS.mainBranches.weekdays}</p>
-                        <p>{JEWEL_LOAN_OFFICE_HOURS.mainBranches.sunday}</p>
-                      </div>
-                      {/* Other Branches */}
-                      <div className="p-2 space-y-1">
-                        <p className="font-bold text-center underline text-[11px] text-gray-900">
-                          {JEWEL_LOAN_OFFICE_HOURS.otherBranches.title}
-                        </p>
-                        <p>{JEWEL_LOAN_OFFICE_HOURS.otherBranches.weekdays}</p>
-                        <p>{JEWEL_LOAN_OFFICE_HOURS.otherBranches.sunday}</p>
-                      </div>
+                    <div className="p-2.5 text-center space-y-1 bg-gray-50/50">
+                      <p className="font-bold text-gray-900 text-xs sm:text-sm">
+                        {JEWEL_LOAN_OFFICE_HOURS.workingHours}
+                      </p>
+                      <p className="font-bold text-amber-900 text-xs">
+                        {JEWEL_LOAN_OFFICE_HOURS.weeklyHoliday}
+                      </p>
                     </div>
-                  </div>
-
-                  {/* Schedule Footnotes */}
-                  <div className="text-center text-[10.5px] text-gray-800 space-y-0.5 pt-1 font-medium">
-                    <p>{JEWEL_LOAN_OFFICE_HOURS.lunchBreak}</p>
-                    <p className="font-bold text-gray-950">
-                      வார விடுமுறை : <span className="font-bold text-amber-900 underline">Monday (திங்கட்கிழமை)</span>
-                    </p>
                   </div>
                 </div>
 
               </div>
             </div>
 
+          </div>
         </div>
       </div>
     </div>
@@ -707,77 +712,183 @@ function LoanCustomerCardModal({ loan, onClose }) {
   const dueDate = getLoanDueDate(loan);
   const packetNo = loan.packetNo || loan.loanNumber?.replace(/[^\d]/g, '').slice(-5) || '17642';
 
-  const handlePrintCard = () => {
+  const handlePrintCard = (paperSize = 'slip') => {
     const cardEl = document.getElementById('loan-customer-card-print-area');
     if (!cardEl) return;
     const w = window.open('', '_blank');
-    w.document.write(`
-      <!DOCTYPE html><html><head>
-      <meta charset="UTF-8">
-      <title>CUSTOMER-CARD-${loan.loanNumber} - ${SHOP_INFO.name}</title>
-      <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-          font-family: 'Segoe UI', 'Nirmala UI', 'Noto Sans Tamil', Arial, sans-serif; 
-          background: #fff; 
-          color: #111; 
-          padding: 10px;
-          display: flex;
-          justify-content: center;
-        }
-        @media print { 
-          @page { size: 105mm 150mm; margin: 4mm; } 
-          body { padding: 0; }
-          .no-print { display: none !important; }
-        }
-        .slip-outer {
-          width: 100%;
-          max-width: 400px;
-          background-color: #eaf4fc !important;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-          border: 2px solid #0284c7;
-          border-radius: 8px;
-          padding: 14px;
-        }
-      </style>
-      </head><body>
-        <div class="slip-outer">${cardEl.innerHTML}</div>
-      </body></html>
-    `);
+    
+    if (paperSize === 'a4') {
+      // Full A4 Size Print (வாடிக்கையாளர் நகல் + அலுவலக நகல் with center fold/cut line)
+      w.document.write(`
+        <!DOCTYPE html><html><head>
+        <meta charset="UTF-8">
+        <title>A4-CUSTOMER-PLEDGE-RECEIPT-${loan.loanNumber} - ${SHOP_INFO.name}</title>
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', 'Nirmala UI', 'Noto Sans Tamil', Arial, sans-serif; 
+            background: #fff; 
+            color: #111; 
+            padding: 8mm 12mm;
+            display: flex;
+            justify-content: center;
+          }
+          @media print { 
+            @page { size: A4 portrait; margin: 8mm; } 
+            body { padding: 0; }
+            .no-print { display: none !important; }
+          }
+          .a4-container {
+            width: 100%;
+            max-width: 680px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+          }
+          .slip-copy {
+            background-color: #eaf4fc !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            border: 2px solid #0284c7;
+            border-radius: 8px;
+            padding: 14px 18px;
+          }
+          .copy-tag {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 10px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .customer-tag {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+          }
+          .office-tag {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+          }
+          .cut-divider {
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #6b7280;
+            border-top: 1.5px dashed #9ca3af;
+            margin: 10px 0 6px 0;
+            padding-top: 5px;
+            letter-spacing: 1px;
+          }
+        </style>
+        </head><body>
+          <div class="a4-container">
+            <!-- 1. Customer Copy -->
+            <div>
+              <div style="text-align: right;"><span class="copy-tag customer-tag">வாடிக்கையாளர் நகல் / CUSTOMER COPY</span></div>
+              <div class="slip-copy">${cardEl.innerHTML}</div>
+            </div>
+
+            <!-- Tear / Cut Line across center -->
+            <div class="cut-divider">
+              ✂ ----------------- மடிக்க அல்லது பிரிக்க வேண்டிய இடம் / FOLD OR CUT HERE ACROSS CENTER ----------------- ✂
+            </div>
+
+            <!-- 2. Office Duplicate Copy -->
+            <div>
+              <div style="text-align: right;"><span class="copy-tag office-tag">அலுவலக நகல் / OFFICE DUPLICATE COPY</span></div>
+              <div class="slip-copy">${cardEl.innerHTML}</div>
+            </div>
+          </div>
+        </body></html>
+      `);
+    } else {
+      // Slip / Card Size (105mm x 150mm)
+      w.document.write(`
+        <!DOCTYPE html><html><head>
+        <meta charset="UTF-8">
+        <title>CUSTOMER-CARD-${loan.loanNumber} - ${SHOP_INFO.name}</title>
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', 'Nirmala UI', 'Noto Sans Tamil', Arial, sans-serif; 
+            background: #fff; 
+            color: #111; 
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+          }
+          @media print { 
+            @page { size: 105mm 150mm; margin: 4mm; } 
+            body { padding: 0; }
+            .no-print { display: none !important; }
+          }
+          .slip-outer {
+            width: 100%;
+            max-width: 400px;
+            background-color: #eaf4fc !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            border: 2px solid #0284c7;
+            border-radius: 8px;
+            padding: 14px;
+          }
+        </style>
+        </head><body>
+          <div class="slip-outer">${cardEl.innerHTML}</div>
+        </body></html>
+      `);
+    }
     w.document.close();
     w.focus();
     setTimeout(() => { w.print(); }, 500);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-4 px-3">
-      <div className="w-full max-w-md bg-white rounded-2xl p-4 sm:p-6 shadow-2xl border border-gray-200 animate-fade-in my-auto">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-gray-100">
+    <div 
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col border-l border-gray-200 overflow-hidden animate-drawer-right rounded-l-2xl sm:rounded-l-3xl">
+        {/* Drawer Header */}
+        <div className="shrink-0 p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white">
           <div>
             <h2 className="text-gray-800 font-bold text-base sm:text-lg flex items-center gap-2">
               <CreditCard className="text-blue-600 shrink-0" size={18} /> வாடிக்கையாளர் அட்டை ரசீது
             </h2>
             <p className="text-gray-400 text-xs">Customer Pledge Slip • {loan.customerName}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors">
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer">
             <X size={18} />
           </button>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 mb-3">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5">
+        {/* Action Buttons: Card Size vs A4 Size Print */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
           <button
-            onClick={handlePrintCard}
-            className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+            onClick={() => handlePrintCard('slip')}
+            className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+            title="Print compact card slip size (105mm x 150mm)"
           >
-            <Printer size={15} /> Print Card (ரசீது அச்சிடு)
+            <Printer size={15} /> Print Card (ரசீது)
+          </button>
+          <button
+            onClick={() => handlePrintCard('a4')}
+            className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs sm:text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+            title="Print full A4 sheet with Customer Copy + Office Duplicate Copy"
+          >
+            <FileText size={15} /> Print A4 Size (A4 தாள்)
           </button>
           <button
             onClick={onClose}
-            className="py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs transition-all"
+            className="col-span-2 sm:col-span-1 py-2.5 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs transition-all"
           >
             Close
           </button>
@@ -913,6 +1024,7 @@ function LoanCustomerCardModal({ loan, onClose }) {
             </div>
           </div>
         </div>
+        </div>
       </div>
     </div>
   );
@@ -1001,23 +1113,27 @@ function RenewLoanModal({ loan, onClose, onConfirm, currentStaff }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-gray-800">
-      <div className="w-full max-w-lg bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto animate-fade-in">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+    <div 
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+      onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
+    >
+      <div className="w-full max-w-lg sm:max-w-xl bg-white h-full shadow-2xl flex flex-col border-l border-gray-200 overflow-hidden animate-drawer-right rounded-l-2xl sm:rounded-l-3xl text-gray-800">
+        {/* Drawer Header */}
+        <div className="shrink-0 p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white">
           <div>
             <h2 className="text-gray-800 font-bold text-lg sm:text-xl flex items-center gap-2">
               <RefreshCw className="text-emerald-600" size={20} /> Renew Jewel Loan (புதுப்பித்தல்)
             </h2>
             <p className="text-gray-400 text-xs mt-0.5">Loan #{loan.loanNumber} • {loan.customerName}</p>
           </div>
-          <button onClick={onClose} disabled={loading} className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors">
+          <button onClick={onClose} disabled={loading} className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer">
             <X size={18} />
           </button>
         </div>
 
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium">
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium">
             {error}
           </div>
         )}
@@ -1160,7 +1276,7 @@ function RenewLoanModal({ loan, onClose, onConfirm, currentStaff }) {
         </div>
 
         {/* Modal Buttons */}
-        <div className="flex gap-2.5">
+        <div className="flex gap-2.5 pt-2">
           <button
             onClick={onClose}
             disabled={loading}
@@ -1177,6 +1293,490 @@ function RenewLoanModal({ loan, onClose, onConfirm, currentStaff }) {
             {loading ? 'Renewing Loan...' : 'Confirm Renewal (புதுப்பித்தல்)'}
           </button>
         </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Modal for Settling Jewel Loan (பைசல் செய்தல்) with Multi-Payment & Overdue Fine ───
+function SettleLoanModal({ loan, onClose, onConfirm, currentStaff }) {
+  if (!loan) return null;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [settleDate, setSettleDate] = useState(todayStr);
+  const [fineAmount, setFineAmount] = useState('0');
+  const [isFineCustomized, setIsFineCustomized] = useState(false);
+  const [settleNotes, setSettleNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const dueDate = getLoanDueDate(loan);
+  const startDate = loan.lastRenewalDate || loan.issueDate;
+  const principal = Number(loan.loanAmount) || 0;
+
+  // Dynamic interest calculation based on selected settlement date
+  const calc = useMemo(() => {
+    const settleDateTime = new Date(`${settleDate}T23:59:59`);
+    return calculateLoanInterest(
+      principal,
+      loan.interestRate,
+      startDate,
+      settleDateTime.toISOString(),
+      loan.overdueInterestRate,
+      dueDate,
+      loan.tenureMonths || 12
+    );
+  }, [principal, loan.interestRate, startDate, settleDate, loan.overdueInterestRate, dueDate, loan.tenureMonths]);
+
+  const isOverdue = useMemo(() => {
+    if (!dueDate) return false;
+    const settleD = new Date(`${settleDate}T23:59:59`);
+    return settleD > new Date(dueDate);
+  }, [settleDate, dueDate]);
+
+  // Overdue fine auto-calculation whenever date or overdue status changes
+  useEffect(() => {
+    if (!isFineCustomized) {
+      if (isOverdue) {
+        const autoFine = (calc.overdueInterest && calc.overdueInterest > 0)
+          ? calc.overdueInterest
+          : Math.round((principal * (Number(loan.overdueInterestRate || loan.interestRate) || 1.5)) / 100);
+        setFineAmount(String(autoFine));
+      } else {
+        setFineAmount('0');
+      }
+    }
+  }, [isOverdue, calc.overdueInterest, principal, loan.overdueInterestRate, loan.interestRate, isFineCustomized]);
+
+  const normalInterest = Number(calc.normalInterest) || 0;
+  const numFine = Math.max(0, parseFloat(fineAmount) || 0);
+  const totalAmountToCollect = principal + normalInterest + numFine;
+
+  // Multiple payment entries with date
+  const [payments, setPayments] = useState([
+    {
+      id: 1,
+      date: todayStr,
+      amount: '',
+      paymentMode: 'Cash',
+      reference: '',
+      note: ''
+    }
+  ]);
+
+  // Auto initialize first payment amount when empty
+  useEffect(() => {
+    setPayments(prev => {
+      if (prev.length === 1 && (!prev[0].amount || prev[0].amount === '0')) {
+        return [{ ...prev[0], amount: String(totalAmountToCollect) }];
+      }
+      return prev;
+    });
+  }, [totalAmountToCollect]);
+
+  const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  const remainingBalance = Math.round(totalAmountToCollect - totalPaid);
+
+  const handleAddPayment = () => {
+    const nextAmt = Math.max(0, remainingBalance);
+    setPayments(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        date: settleDate,
+        amount: nextAmt > 0 ? String(nextAmt) : '',
+        paymentMode: 'Cash',
+        reference: '',
+        note: ''
+      }
+    ]);
+  };
+
+  const handleRemovePayment = (id) => {
+    if (payments.length <= 1) return;
+    setPayments(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handlePaymentChange = (id, field, value) => {
+    setPayments(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+  };
+
+  const handleAutoFill = (id) => {
+    const otherPaid = payments.filter(p => p.id !== id).reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+    const diff = Math.max(0, totalAmountToCollect - otherPaid);
+    handlePaymentChange(id, 'amount', String(diff));
+  };
+
+  const handleSettleSubmit = async () => {
+    if (totalPaid <= 0) {
+      setError('Please enter payment amounts before confirming settlement.');
+      return;
+    }
+    if (Math.abs(remainingBalance) > 1) {
+      setError(`Payments entered (₹${totalPaid.toLocaleString('en-IN')}) do not match the total required (₹${totalAmountToCollect.toLocaleString('en-IN')}). Please balance the payments.`);
+      return;
+    }
+    setError('');
+    setLoading(true);
+
+    try {
+      const settleDateTime = new Date(`${settleDate}T23:59:59`).toISOString();
+      const updatedLoan = {
+        ...loan,
+        status: 'Closed',
+        closingDate: settleDateTime,
+        monthsCalculated: parseFloat(calc.months),
+        interestAccrued: normalInterest,
+        fine: numFine,
+        totalRepaid: totalPaid,
+        settleNotes: settleNotes.trim(),
+        payments: payments.map(p => ({
+          date: new Date(p.date || settleDate).toISOString(),
+          amount: parseFloat(p.amount) || 0,
+          paymentMode: p.paymentMode || 'Cash',
+          reference: p.reference || '',
+          note: p.note || '',
+          receivedBy: currentStaff?.name || 'Staff'
+        })),
+      };
+
+      await onConfirm(updatedLoan);
+    } catch (err) {
+      setError(err.message || 'Failed to settle loan');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+      onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
+    >
+      <div className="w-full max-w-xl sm:max-w-2xl bg-white h-full shadow-2xl flex flex-col border-l border-gray-200 overflow-hidden animate-drawer-right rounded-l-2xl sm:rounded-l-3xl text-gray-800">
+        {/* Drawer Header */}
+        <div className="shrink-0 p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white">
+          <div>
+            <h2 className="text-gray-800 font-bold text-lg sm:text-xl flex items-center gap-2">
+              <CheckCircle2 className="text-emerald-500" size={22} /> Settle Jewel Loan (நகைக்கடன் பைசல்)
+            </h2>
+            <p className="text-gray-400 text-xs mt-0.5">Loan #{loan.loanNumber} • {loan.customerName}</p>
+          </div>
+          <button onClick={onClose} disabled={loading} className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-semibold flex items-center gap-2 animate-fade-in">
+              <AlertTriangle size={15} className="text-red-600 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Loan Basic Info Card */}
+          <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3.5 text-xs space-y-2">
+            <div className="flex justify-between items-center font-bold text-amber-950 border-b border-amber-200/60 pb-1.5">
+              <span>Pledged Article:</span>
+              <span className="font-extrabold text-sm text-amber-900">{loan.pledgeItem} ({loan.weight}g, {loan.purity})</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-gray-700 pt-0.5">
+              <div>
+                <span className="text-gray-400 font-medium">Issue Date:</span>
+                <p className="font-semibold text-gray-900">{formatDate(loan.originalIssueDate || loan.issueDate)}</p>
+              </div>
+              <div>
+                <span className="text-gray-400 font-medium">Original Due Date:</span>
+                <p className="font-semibold text-gray-900">{dueDate ? formatDate(dueDate) : 'N/A'}</p>
+              </div>
+              <div>
+                <span className="text-gray-400 font-medium">Interest Rate:</span>
+                <p className="font-semibold text-gray-900">{loan.interestRate}%/mo</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Settlement Date Picker & Overdue / Fine Notice */}
+          <div className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-3 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-1.5">
+                <Calendar size={15} className="text-amber-600" />
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Settlement Date (பைசல் செய்யும் தேதி) *
+                </label>
+              </div>
+              <input
+                type="date"
+                value={settleDate}
+                onChange={e => {
+                  setSettleDate(e.target.value);
+                  setIsFineCustomized(false);
+                }}
+                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-800 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            {/* Overdue Fine Notice Banner */}
+            {isOverdue ? (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 space-y-2 text-xs text-red-900 animate-fade-in">
+                <div className="flex items-center gap-2 font-bold text-red-700">
+                  <AlertTriangle size={16} className="text-red-600 shrink-0" />
+                  <span>தவணை முடிந்தது - தவணை தவறிய கடன் (Loan is Overdue!)</span>
+                </div>
+                <p className="text-gray-700 leading-tight">
+                  Due date was <strong>{dueDate ? formatDate(dueDate) : 'N/A'}</strong>. 
+                  Customer has exceeded the due date ({calc.days} days elapsed).
+                  Overdue fine / late interest rate: <strong className="text-red-700 font-mono">{loan.overdueInterestRate || loan.interestRate}%/month</strong>.
+                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-red-200/80">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-red-800">Overdue Fine / Penalty (அபராதத் தொகை):</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      value={fineAmount}
+                      onChange={e => {
+                        setFineAmount(e.target.value);
+                        setIsFineCustomized(true);
+                      }}
+                      className="w-28 bg-white border border-red-300 rounded-lg px-2.5 py-1 text-right font-mono font-bold text-red-700 focus:outline-none focus:border-red-500 text-xs sm:text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFineAmount('0');
+                        setIsFineCustomized(true);
+                      }}
+                      className="px-2 py-1 rounded bg-red-100 hover:bg-red-200 text-red-800 font-bold text-[11px] transition-all"
+                      title="Waive fine completely (அபராத தள்ளுபடி)"
+                    >
+                      Waive (தள்ளுபடி)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsFineCustomized(false)}
+                      className="text-[11px] text-gray-500 hover:underline"
+                      title="Reset to calculated fine"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-800 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                  <span>Paid Within Tenure (தவணைக்குள் செலுத்தப்படுகிறது - No Late Fine)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-500 text-[11px]">Optional Fine: ₹</span>
+                  <input
+                    type="number"
+                    value={fineAmount}
+                    onChange={e => {
+                      setFineAmount(e.target.value);
+                      setIsFineCustomized(true);
+                    }}
+                    className="w-20 bg-white border border-emerald-300 rounded-lg px-2 py-0.5 text-right font-mono font-bold text-emerald-800 text-xs"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Financial Calculation Breakdown Card */}
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5 space-y-2 text-xs">
+            <div className="flex justify-between text-gray-600">
+              <span>Principal Amount (அசல்):</span>
+              <span className="font-semibold font-mono text-gray-900">{formatCurrency(principal)}</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Duration Elapsed:</span>
+              <span className="font-semibold text-gray-900">
+                {calc.days} days ({calc.months} months)
+                {calc.isMinimumPeriod && (
+                  <span className="text-amber-800 text-[11px] font-bold ml-1.5">(30 days min. interest rule)</span>
+                )}
+              </span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Standard Interest ({loan.interestRate}%/mo):</span>
+              <span className="font-semibold font-mono text-gray-900">{formatCurrency(normalInterest)}</span>
+            </div>
+            {numFine > 0 && (
+              <div className="flex justify-between text-red-600 font-semibold">
+                <span>Overdue Fine / Penalty (அபராதம்):</span>
+                <span className="font-mono font-bold">+{formatCurrency(numFine)}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center text-sm sm:text-base font-extrabold pt-2 border-t border-gray-200 text-gray-900">
+              <span>Net Settlement Amount (மொத்தம்):</span>
+              <span className="text-amber-700 font-mono text-base sm:text-lg">{formatCurrency(totalAmountToCollect)}</span>
+            </div>
+          </div>
+
+          {/* Multiple Payments with Date Section */}
+          <div className="border border-gray-200 rounded-xl p-3.5 space-y-3 bg-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <CreditCard size={15} className="text-blue-600" />
+                  Payments with Date (தவணை / செலுத்தல் விவரங்கள்)
+                </h4>
+                <p className="text-[11px] text-gray-400 mt-0.5">Record single or split payment entries across multiple dates and payment modes</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleAddPayment}
+                className="py-1 px-2.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs flex items-center gap-1 border border-blue-200 transition-all shadow-2xs"
+              >
+                <Plus size={13} /> Add Payment
+              </button>
+            </div>
+
+            {/* List of Payment Entries */}
+            <div className="space-y-2.5">
+              {payments.map((p, idx) => (
+                <div key={p.id} className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-gray-500 font-bold pb-1 border-b border-gray-200">
+                    <span>Payment #{idx + 1}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleAutoFill(p.id)}
+                        className="text-[10px] text-blue-700 hover:text-blue-900 font-semibold underline"
+                      >
+                        Auto-Fill Balance
+                      </button>
+                      {payments.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePayment(p.id)}
+                          className="text-red-500 hover:text-red-700 p-0.5"
+                          title="Remove payment entry"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Date (தேதி)</label>
+                      <input
+                        type="date"
+                        value={p.date}
+                        onChange={e => handlePaymentChange(p.id, 'date', e.target.value)}
+                        className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 font-medium focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Amount (தொகை ₹) *</label>
+                      <input
+                        type="number"
+                        value={p.amount}
+                        onChange={e => handlePaymentChange(p.id, 'amount', e.target.value)}
+                        placeholder="0.00"
+                        className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Payment Mode</label>
+                      <select
+                        value={p.paymentMode}
+                        onChange={e => handlePaymentChange(p.id, 'paymentMode', e.target.value)}
+                        className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-800 focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="Cash">Cash (பணம்)</option>
+                        <option value="UPI">UPI / GPay / PhonePe</option>
+                        <option value="Card">Card (அட்டை)</option>
+                        <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                        <option value="Cheque">Cheque (காசோலை)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <input
+                      type="text"
+                      value={p.reference}
+                      onChange={e => handlePaymentChange(p.id, 'reference', e.target.value)}
+                      placeholder="Reference / Txn ID / Note (optional)"
+                      className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-[11px] text-gray-700 placeholder-gray-400 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Reconciliation Balance Bar */}
+            <div className="bg-gray-100 rounded-xl p-3 text-xs space-y-1.5 border border-gray-200">
+              <div className="flex justify-between text-gray-600">
+                <span>Total Amount to Settle:</span>
+                <span className="font-mono font-bold text-gray-900">{formatCurrency(totalAmountToCollect)}</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Total Payments Entered:</span>
+                <span className="font-mono font-bold text-emerald-800">{formatCurrency(totalPaid)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-1 border-t border-gray-200 font-bold">
+                <span>Remaining Balance:</span>
+                <span className={`font-mono text-sm ${remainingBalance === 0 ? 'text-emerald-700' : remainingBalance > 0 ? 'text-amber-800' : 'text-red-700'}`}>
+                  {formatCurrency(remainingBalance)}
+                </span>
+              </div>
+              {Math.abs(remainingBalance) <= 1 ? (
+                <div className="pt-1 flex items-center gap-1.5 text-emerald-700 font-bold text-[11px]">
+                  <CheckCircle2 size={13} />
+                  <span>Payments fully match the settlement total! Ready to close loan.</span>
+                </div>
+              ) : (
+                <div className="pt-1 text-[11px] text-amber-800 font-semibold">
+                  ⚠️ Please adjust payment entries so remaining balance is ₹0.00.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="text-xs text-gray-600 font-bold mb-1 block uppercase tracking-wider">
+              Settlement Notes (பைசல் குறிப்பு - optional)
+            </label>
+            <input 
+              type="text"
+              value={settleNotes}
+              onChange={e => setSettleNotes(e.target.value)}
+              className="w-full border border-gray-300 bg-gray-50 focus:bg-white rounded-xl px-3.5 py-2 text-gray-900 text-xs sm:text-sm focus:border-amber-500 focus:outline-none"
+              placeholder="e.g. Paid in full and gold article returned to customer"
+            />
+          </div>
+
+          {/* Settle Modal Action Buttons */}
+          <div className="flex gap-2.5 pt-2">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs sm:text-sm transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSettleSubmit}
+              disabled={loading || Math.abs(remainingBalance) > 1}
+              className="flex-2 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+              {loading ? 'Settling Loan...' : 'Confirm Full Settlement (கடனை பைசல் செய்க)'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1192,6 +1792,12 @@ const emptyLoan = {
 export default function LoansPage({ loans, bills = [], onSaveLoan, onUpdateLoan, onGenerateBill, currentStaff, currentStore }) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('All'); // 'All' | 'Today' | 'This Month' | 'This Year' | 'Custom'
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [dateBasis, setDateBasis] = useState('issueDate'); // 'issueDate' | 'dueDate'
+  const [sortBy, setSortBy] = useState('issue_desc'); // 'issue_desc' | 'issue_asc' | 'due_asc' | 'amount_desc' | 'amount_asc' | 'name_asc' | 'weight_desc'
+
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyLoan);
   const [success, setSuccess] = useState('');
@@ -1220,24 +1826,94 @@ export default function LoansPage({ loans, bills = [], onSaveLoan, onUpdateLoan,
     setCardBillSide('front');
   };
 
-  const filtered = loans.filter(l => {
-    if (filter === 'Overdue') {
-      const loanDueDate = getLoanDueDate(l);
-      const isPastDue = loanDueDate ? new Date() > new Date(loanDueDate) : false;
-      return l.status === 'Active' && isPastDue;
-    }
-    if (filter !== 'All' && l.status !== filter) {
-      return false;
-    }
-    const q = search.toLowerCase();
-    const huid = (l.huid || '').toLowerCase();
-    const govt = (l.govtProof || '').toLowerCase();
-    return l.customerName.toLowerCase().includes(q) ||
-           l.customerMobile.includes(q) ||
-           l.loanNumber.toLowerCase().includes(q) ||
-           huid.includes(q) ||
-           govt.includes(q);
-  }).sort((a, b) => new Date(b.issueDate) - new Date(a.issueDate));
+  const deferredSearch = useDeferredValue(search);
+
+  const { filtered, filteredPrincipal, filteredWeight } = useMemo(() => {
+    const list = loans.filter(l => {
+      // 1. Status Filter
+      if (filter === 'Overdue') {
+        const loanDueDate = getLoanDueDate(l);
+        const isPastDue = loanDueDate ? new Date() > new Date(loanDueDate) : false;
+        if (l.status !== 'Active' || !isPastDue) return false;
+      } else if (filter !== 'All' && l.status !== filter) {
+        return false;
+      }
+
+      // 2. Date Filter
+      if (dateFilter !== 'All') {
+        const targetDate = dateBasis === 'dueDate' ? getLoanDueDate(l) : (l.issueDate || l.createdAt);
+        if (!targetDate) return false;
+        const d = new Date(targetDate);
+        const now = new Date();
+
+        if (dateFilter === 'Today') {
+          if (d.toDateString() !== now.toDateString()) return false;
+        } else if (dateFilter === 'This Month') {
+          if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return false;
+        } else if (dateFilter === 'This Year') {
+          if (d.getFullYear() !== now.getFullYear()) return false;
+        } else if (dateFilter === 'Custom') {
+          if (startDate) {
+            const s = new Date(startDate);
+            s.setHours(0, 0, 0, 0);
+            if (d < s) return false;
+          }
+          if (endDate) {
+            const e = new Date(endDate);
+            e.setHours(23, 59, 59, 999);
+            if (d > e) return false;
+          }
+        }
+      }
+
+      // 3. Search query
+      if (deferredSearch.trim()) {
+        const q = deferredSearch.toLowerCase();
+        const huid = (l.huid || '').toLowerCase();
+        const govt = (l.govtProof || '').toLowerCase();
+        const packet = (l.packetNo || '').toLowerCase();
+        const item = (l.pledgeItem || '').toLowerCase();
+        const match = (
+          (l.customerName || '').toLowerCase().includes(q) ||
+          (l.customerMobile || '').includes(q) ||
+          (l.loanNumber || '').toLowerCase().includes(q) ||
+          huid.includes(q) ||
+          govt.includes(q) ||
+          packet.includes(q) ||
+          item.includes(q)
+        );
+        if (!match) return false;
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (sortBy === 'issue_asc') return new Date(a.issueDate || a.createdAt) - new Date(b.issueDate || b.createdAt);
+      if (sortBy === 'due_asc') return new Date(getLoanDueDate(a) || 0) - new Date(getLoanDueDate(b) || 0);
+      if (sortBy === 'amount_desc') return (Number(b.loanAmount) || 0) - (Number(a.loanAmount) || 0);
+      if (sortBy === 'amount_asc') return (Number(a.loanAmount) || 0) - (Number(b.loanAmount) || 0);
+      if (sortBy === 'name_asc') return (a.customerName || '').localeCompare(b.customerName || '');
+      if (sortBy === 'weight_desc') return (Number(b.weight) || 0) - (Number(a.weight) || 0);
+      // Default: issue_desc
+      return new Date(b.issueDate || b.createdAt) - new Date(a.issueDate || a.createdAt);
+    });
+
+    const principal = list.reduce((s, l) => s + (Number(l.loanAmount) || 0), 0);
+    const weight = list.reduce((s, l) => s + (Number(l.weight) || 0), 0);
+
+    return { filtered: list, filteredPrincipal: principal, filteredWeight: weight };
+  }, [loans, filter, dateFilter, startDate, endDate, dateBasis, sortBy, deferredSearch]);
+
+  const hasActiveFilters = filter !== 'All' || dateFilter !== 'All' || sortBy !== 'issue_desc' || search !== '' || startDate !== '' || endDate !== '';
+
+  const handleResetFilters = () => {
+    setSearch('');
+    setFilter('All');
+    setDateFilter('All');
+    setStartDate('');
+    setEndDate('');
+    setDateBasis('issueDate');
+    setSortBy('issue_desc');
+  };
 
   const totalActiveLoansAmount = loans.filter(l => l.status === 'Active').reduce((s, l) => s + l.loanAmount, 0);
 
@@ -1334,39 +2010,12 @@ export default function LoansPage({ loans, bills = [], onSaveLoan, onUpdateLoan,
     }
   };
 
-  const handleSettle = async () => {
-    const loan = loans.find(l => (l.id || l._id) === settleLoanId);
-    if (!loan) return;
-    
-    const now = new Date().toISOString();
-    const dueDate = getLoanDueDate(loan);
-    const startDate = loan.lastRenewalDate || loan.issueDate;
-    const calc = calculateLoanInterest(
-      loan.loanAmount,
-      loan.interestRate,
-      startDate,
-      now,
-      loan.overdueInterestRate,
-      dueDate,
-      loan.tenureMonths || 12
-    );
-    
-    const updatedLoan = {
-      ...loan,
-      status: 'Closed',
-      closingDate: now,
-      monthsCalculated: calc.months,
-      interestAccrued: calc.interestAmount,
-      totalRepaid: calc.totalRepayment
-    };
-    
+  const handleConfirmSettlement = async (updatedLoan) => {
     try {
       await onUpdateLoan(updatedLoan);
-
       setSettleLoanId(null);
-      setSuccess('Jewel Loan settled successfully!');
-      setTimeout(() => setSuccess(''), 3000);
-      
+      setSuccess(`Jewel Loan #${updatedLoan.loanNumber} settled & closed successfully! Total Repaid: ${formatCurrency(updatedLoan.totalRepaid || 0)}`);
+      setTimeout(() => setSuccess(''), 4000);
       setPreviewCardBill(updatedLoan);
       setCardBillSide('front');
     } catch (err) {
@@ -1406,8 +2055,8 @@ export default function LoansPage({ loans, bills = [], onSaveLoan, onUpdateLoan,
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-3 sm:p-5 shadow-sm">
+      {/* Filters & Sorting */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-3 sm:p-5 shadow-sm space-y-3.5">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-450" />
@@ -1419,6 +2068,7 @@ export default function LoansPage({ loans, bills = [], onSaveLoan, onUpdateLoan,
               className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2 sm:py-2.5 text-gray-850 text-xs sm:text-sm focus:outline-none focus:border-amber-450 focus:ring-2 focus:ring-amber-100 transition-all"
             />
           </div>
+          {/* Status Filter Buttons */}
           <div className="grid grid-cols-2 sm:flex gap-1.5 sm:gap-2">
             {['All', 'Active', 'Overdue', 'Closed'].map(f => (
               <button
@@ -1430,10 +2080,138 @@ export default function LoansPage({ loans, bills = [], onSaveLoan, onUpdateLoan,
                     : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}
               >
                 {f === 'Overdue' && <AlertTriangle size={13} />}
-                {f === 'All' ? 'All Loans' : f}
+                {f === 'All' ? 'All Status' : f}
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Date Filters & Sorting Controls */}
+        <div className="pt-2 border-t border-gray-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          {/* Date Range Presets */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+              <Calendar size={13} className="text-amber-600" /> Date:
+            </span>
+            {[
+              { id: 'All', label: 'All Time' },
+              { id: 'Today', label: 'Today' },
+              { id: 'This Month', label: 'This Month' },
+              { id: 'This Year', label: 'This Year' },
+              { id: 'Custom', label: 'Date to Date' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setDateFilter(tab.id)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  dateFilter === tab.id
+                    ? 'bg-amber-500 text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+
+            {/* Date Basis: Issue Date vs Due Date */}
+            <div className="ml-1 sm:ml-2 flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200 text-[11px]">
+              <button
+                onClick={() => setDateBasis('issueDate')}
+                className={`px-2 py-1 rounded-md font-medium transition-all ${
+                  dateBasis === 'issueDate' ? 'bg-white text-amber-800 font-bold shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                Issue Date
+              </button>
+              <button
+                onClick={() => setDateBasis('dueDate')}
+                className={`px-2 py-1 rounded-md font-medium transition-all ${
+                  dateBasis === 'dueDate' ? 'bg-white text-amber-800 font-bold shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                Due Date
+              </button>
+            </div>
+          </div>
+
+          {/* Sorting Dropdown */}
+          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+              <ArrowUpDown size={13} className="text-amber-600" /> Sort:
+            </span>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+            >
+              <option value="issue_desc">Issue Date: Newest First</option>
+              <option value="issue_asc">Issue Date: Oldest First</option>
+              <option value="due_asc">Due Date: Nearest Due First</option>
+              <option value="amount_desc">Principal: High to Low</option>
+              <option value="amount_asc">Principal: Low to High</option>
+              <option value="name_asc">Customer Name: A to Z</option>
+              <option value="weight_desc">Weight: Heaviest First</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Custom Date Range Pickers (shown when Custom is active) */}
+        {dateFilter === 'Custom' && (
+          <div className="flex items-center gap-3 p-3 bg-amber-50/60 border border-amber-200 rounded-xl flex-wrap text-xs animate-fade-in">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600 font-bold">From Date:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-850 font-medium focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600 font-bold">To Date:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                className="bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-850 font-medium focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+                className="text-[11px] text-amber-800 font-bold hover:underline ml-auto"
+              >
+                Clear Dates
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* KPI Summary / Active Filters Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 text-xs">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-gray-500">
+              Showing <strong className="text-gray-900 font-mono">{filtered.length}</strong> loans
+            </span>
+            <span className="text-gray-300">•</span>
+            <span className="text-gray-500">
+              Principal: <strong className="text-amber-800 font-mono font-bold">{formatCurrency(filteredPrincipal)}</strong>
+            </span>
+            <span className="text-gray-300">•</span>
+            <span className="text-gray-500">
+              Pledged Weight: <strong className="text-gray-900 font-mono font-bold">{filteredWeight.toFixed(2)}g</strong>
+            </span>
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              onClick={handleResetFilters}
+              className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:text-amber-900 font-semibold transition-colors"
+            >
+              <RotateCcw size={12} />
+              Reset All Filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -1584,59 +2362,34 @@ export default function LoansPage({ loans, bills = [], onSaveLoan, onUpdateLoan,
         )}
       </div>
 
-      {/* Settle Loan Confirmation Modal */}
+      {/* Settle Jewel Loan Modal with Multi-Payment & Overdue Fine */}
       {settleLoanId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-gray-800">
-          <div className="w-full max-w-md bg-white border border-gray-200 rounded-2xl p-6 shadow-2xl animate-fade-in">
-            <h2 className="text-gray-800 font-bold text-xl mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
-              <CheckCircle2 className="text-emerald-500" /> Settle Jewel Loan
-            </h2>
-            
-            {(() => {
-              const loan = loans.find(l => (l.id || l._id) === settleLoanId);
-              const dueDate = getLoanDueDate(loan);
-              const startDate = loan.lastRenewalDate || loan.issueDate;
-              const calc = calculateLoanInterest(
-                loan.loanAmount, 
-                loan.interestRate, 
-                startDate, 
-                new Date().toISOString(),
-                loan.overdueInterestRate,
-                dueDate,
-                loan.tenureMonths || 12
-              );
-              
-              return (
-                <div className="space-y-3 mb-6 bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm">
-                  <div className="flex justify-between text-gray-500"><span>Principal:</span> <span className="font-semibold">{formatCurrency(loan.loanAmount)}</span></div>
-                  <div className="flex justify-between text-gray-500"><span>Duration:</span> <span className="font-semibold">{calc.months} months</span></div>
-                  <div className="flex justify-between text-gray-500"><span>Standard Interest ({loan.interestRate}%/mo):</span> <span className="font-semibold">{formatCurrency(calc.normalInterest)}</span></div>
-                  {calc.isOverdue && (
-                    <div className="flex justify-between text-red-600 font-semibold">
-                      <span>Overdue Extra ({loan.overdueInterestRate || loan.interestRate}%/mo):</span> <span>{formatCurrency(calc.overdueInterest)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-gray-800 font-bold text-lg pt-2 border-t border-gray-200">
-                    <span>Total Amount to Collect:</span> <span className="text-amber-600">{formatCurrency(calc.totalRepayment)}</span>
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div className="flex gap-3">
-              <button onClick={() => setSettleLoanId(null)} className="flex-1 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-gray-650 font-semibold hover:bg-gray-200 transition-all">Cancel</button>
-              <button onClick={handleSettle} className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-500 transition-all shadow-sm">Confirm Settlement</button>
-            </div>
-          </div>
-        </div>
+        <SettleLoanModal 
+          loan={loans.find(l => (l.id || l._id) === settleLoanId)}
+          onClose={() => setSettleLoanId(null)}
+          onConfirm={handleConfirmSettlement}
+          currentStaff={currentStaff}
+        />
       )}
 
       {/* Issue New Gold Loan Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-gray-800">
-          <div className="w-full max-w-xl bg-white border border-gray-200 rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
-            <div className="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
-              <h2 className="text-gray-800 font-bold text-xl">Issue New Jewel Loan</h2>
+        <div 
+          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !loanSaveLoading) {
+              setShowForm(false); 
+              setGoldImage(null); 
+              setGoldImagePreview(null); 
+              setCustomerPhoto(null); 
+              setCustomerPhotoPreview(null);
+            }
+          }}
+        >
+          <div className="w-full max-w-xl sm:max-w-2xl bg-white h-full shadow-2xl flex flex-col border-l border-gray-200 overflow-hidden animate-drawer-right rounded-l-2xl sm:rounded-l-3xl text-gray-800">
+            {/* Drawer Header */}
+            <div className="shrink-0 p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white">
+              <h2 className="text-gray-800 font-bold text-lg sm:text-xl">Issue New Jewel Loan</h2>
               <button 
                 onClick={() => { 
                   setShowForm(false); 
@@ -1645,11 +2398,13 @@ export default function LoansPage({ loans, bills = [], onSaveLoan, onUpdateLoan,
                   setCustomerPhoto(null); 
                   setCustomerPhotoPreview(null);
                 }} 
-                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
+                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
 
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
@@ -1794,6 +2549,7 @@ export default function LoansPage({ loans, bills = [], onSaveLoan, onUpdateLoan,
                 {loanSaveLoading ? <Loader2 size={16} className="animate-spin" /> : null}
                 {loanSaveLoading ? 'Issuing Loan...' : 'Issue Loan & Card'}
               </button>
+            </div>
             </div>
           </div>
         </div>

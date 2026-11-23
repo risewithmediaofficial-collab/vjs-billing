@@ -373,9 +373,12 @@ export default function SecretInventoryPage({
 
       {/* Add / Edit Product Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full border border-gray-200 shadow-2xl overflow-hidden my-8 animate-scale-up">
-            <div className="bg-amber-500 text-white px-6 py-5 flex items-center justify-between">
+        <div 
+          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+          onClick={(e) => { if (e.target === e.currentTarget && !saveLoading) setShowForm(false); }}
+        >
+          <div className="w-full max-w-xl sm:max-w-2xl bg-white h-full shadow-2xl flex flex-col border-l border-gray-200 overflow-hidden animate-drawer-right rounded-l-2xl sm:rounded-l-3xl">
+            <div className="shrink-0 bg-amber-500 text-white px-6 py-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white">
                   <Package size={20} />
@@ -389,13 +392,13 @@ export default function SecretInventoryPage({
               </div>
               <button
                 onClick={() => setShowForm(false)}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex-1 p-6 space-y-4 overflow-y-auto">
               {formError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-xl text-sm flex items-center gap-2">
                   <AlertTriangle size={16} className="shrink-0" />
@@ -586,7 +589,7 @@ export default function SecretInventoryPage({
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+            <div className="shrink-0 bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
@@ -610,9 +613,13 @@ export default function SecretInventoryPage({
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl animate-scale-up border border-gray-200">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+        <div 
+          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+          onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirm(null); }}
+        >
+          <div className="bg-white h-full shadow-2xl border-l border-gray-200 p-6 w-full max-w-sm sm:max-w-md animate-drawer-right rounded-l-2xl sm:rounded-l-3xl flex flex-col justify-between">
+            <div>
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4">
               <AlertTriangle size={24} />
             </div>
             <div>
@@ -621,10 +628,11 @@ export default function SecretInventoryPage({
                 This stock record will be permanently deleted.
               </p>
             </div>
-            <div className="flex gap-3 pt-2">
+            </div>
+            <div className="flex gap-3 pt-4 border-t border-gray-100">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50"
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>

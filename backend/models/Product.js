@@ -19,4 +19,8 @@ const ProductSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// High-performance compound indexes for instant sorting & filtering
+ProductSchema.index({ storeId: 1, isSecret: 1, createdAt: -1 });
+ProductSchema.index({ storeId: 1, category: 1 });
+
 module.exports = mongoose.model('Product', ProductSchema);

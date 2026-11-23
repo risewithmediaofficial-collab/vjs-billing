@@ -12,7 +12,7 @@ router.get('/', auth, async (req, res) => {
     }
     const filter = {};
     if (req.query.storeId) filter.storeId = req.query.storeId;
-    const logs = await ActivityLog.find(filter).sort({ createdAt: -1 }).limit(100);
+    const logs = await ActivityLog.find(filter).sort({ createdAt: -1 }).limit(100).lean();
     res.json(logs);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch activity logs.' });

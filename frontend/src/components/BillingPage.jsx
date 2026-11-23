@@ -1642,7 +1642,12 @@ function BillingPage({
                   </div>
 
                   <div>
-                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Rate (₹/g) *</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">Rate (₹/g) *</label>
+                      <span className="text-[9.5px] text-amber-700 font-semibold">
+                        GST: ₹{Math.round(((exchangeForm.metalType === 'silver' ? silverRate : goldRate) || 7500) * 1.03)}/g
+                      </span>
+                    </div>
                     <input
                       type="number"
                       min="0"
@@ -1651,6 +1656,39 @@ function BillingPage({
                       onChange={e => setExchangeForm(p => ({ ...p, rate: e.target.value }))}
                       className="w-full border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-800 font-mono font-semibold focus:outline-none focus:border-amber-400"
                     />
+                    <div className="flex gap-1.5 mt-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const base = (exchangeForm.metalType === 'silver' ? silverRate : goldRate) || 7500;
+                          setExchangeForm(p => ({ ...p, rate: base }));
+                        }}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer border ${
+                          Number(exchangeForm.rate) === ((exchangeForm.metalType === 'silver' ? silverRate : goldRate) || 7500)
+                            ? 'bg-gray-800 text-white border-gray-800'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        }`}
+                        title="Use base gold/silver rate without GST"
+                      >
+                        Base Rate (₹{(exchangeForm.metalType === 'silver' ? silverRate : goldRate) || 7500})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const base = (exchangeForm.metalType === 'silver' ? silverRate : goldRate) || 7500;
+                          const withGst = Math.round(base * 1.03);
+                          setExchangeForm(p => ({ ...p, rate: withGst }));
+                        }}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer border ${
+                          Number(exchangeForm.rate) === Math.round(((exchangeForm.metalType === 'silver' ? silverRate : goldRate) || 7500) * 1.03)
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                            : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                        }`}
+                        title="Use rate with 3% GST"
+                      >
+                        With GST (₹{Math.round(((exchangeForm.metalType === 'silver' ? silverRate : goldRate) || 7500) * 1.03)})
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2047,20 +2085,29 @@ function BillingPage({
 
       {/* ── Add New Product Modal ───────────────────────────────────────────── */}
       {showAddProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4">
-          <div className="w-full max-w-lg bg-white border border-gray-200 rounded-2xl p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-fade-in text-gray-800">
-            <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-100">
+        <div 
+          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !addLoading) {
+              setShowAddProduct(false); setAddImagePreview(null); setModalError('');
+            }
+          }}
+        >
+          <div className="w-full max-w-lg sm:max-w-xl bg-white h-full shadow-2xl flex flex-col border-l border-gray-200 overflow-hidden animate-drawer-right rounded-l-2xl sm:rounded-l-3xl text-gray-800">
+            <div className="shrink-0 p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white">
               <div>
                 <h2 className="text-gray-800 font-bold text-lg">Add New Product</h2>
                 <p className="text-gray-400 text-xs mt-0.5">Product will be saved to inventory</p>
               </div>
               <button
                 onClick={() => { setShowAddProduct(false); setAddImagePreview(null); setModalError(''); }}
-                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
+                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
 
             {/* Modal inline error */}
             {modalError && (
@@ -2246,11 +2293,12 @@ function BillingPage({
                 </select>
               </div>
             </div>
+            </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-2 mt-5 pt-4 border-t border-gray-100">
+            <div className="shrink-0 p-4 sm:p-5 border-t border-gray-100 bg-gray-50 flex flex-col-reverse sm:flex-row gap-2">
               <button
                 onClick={() => { setShowAddProduct(false); setAddImagePreview(null); }}
-                className="py-2.5 px-4 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-200 transition-all text-center"
+                className="py-2.5 px-4 rounded-xl bg-white border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-100 transition-all text-center"
               >
                 Cancel
               </button>

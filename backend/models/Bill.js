@@ -82,4 +82,9 @@ const BillSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// High-performance compound indexes for instant sorting & filtering
+BillSchema.index({ storeId: 1, createdAt: -1 });
+BillSchema.index({ storeId: 1, status: 1 });
+BillSchema.index({ 'customer.phone': 1 });
+
 module.exports = mongoose.model('Bill', BillSchema);

@@ -24,10 +24,22 @@ const LoanSchema = new mongoose.Schema(
     issueDate:           { type: Date, required: true },
     dueDate:             { type: Date },
     closingDate:         { type: Date, default: null },
-    // Settlement details (populated when loan is closed)
+    // Settlement details (populated when loan is closed or payments made)
     monthsCalculated: { type: Number, default: null },
     interestAccrued:  { type: Number, default: null },
+    fine:             { type: Number, default: 0 },
     totalRepaid:      { type: Number, default: null },
+    payments: [
+      {
+        date:        { type: Date, default: Date.now },
+        amount:      { type: Number, required: true },
+        paymentMode: { type: String, default: 'Cash' },
+        reference:   { type: String, default: '' },
+        note:        { type: String, default: '' },
+        receivedBy:  { type: String, default: '' },
+      }
+    ],
+    settleNotes:      { type: String, default: '' },
     // Status
     status:           { type: String, enum: ['Active', 'Closed', 'SettlePending'], default: 'Active' },
     // Staff & Store
@@ -38,5 +50,11 @@ const LoanSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// High-performance compound indexes for instant sorting & filtering
+LoanSchema.index({ storeId: 1, createdAt: -1 });
+LoanSchema.index({ storeId: 1, status: 1 });
+LoanSchema.index({ customerMobile: 1 });
+LoanSchema.index({ dueDate: 1 });
 
 module.exports = mongoose.model('Loan', LoanSchema);

@@ -32,36 +32,24 @@ router.get('/', auth, async (req, res) => {
   try {
     const filter = {};
     if (req.query.storeId) filter.storeId = req.query.storeId;
-    const loans = await Loan.find(filter).sort({ createdAt: -1 });
+    const loans = await Loan.find(filter).sort({ createdAt: -1 }).lean();
 
-    // Ensure all loans have correct dueDate (- 1 day rule) and backfill legacy loans
-    const updatedLoans = await Promise.all(loans.map(async (loan) => {
+    // Fast in-memory due-date verification
+    const fixedLoans = loans.map((loan) => {
       const tenure = Number(loan.tenureMonths || 12);
-      let needsUpdate = false;
-
       if (!loan.dueDate && loan.issueDate) {
         loan.dueDate = calculateDueDate(loan.issueDate, tenure);
-        needsUpdate = true;
       } else if (loan.dueDate && loan.issueDate) {
         const d = new Date(loan.dueDate);
         const issue = new Date(loan.issueDate);
         if (!isNaN(d.getTime()) && !isNaN(issue.getTime()) && d.getDate() === issue.getDate()) {
           loan.dueDate = calculateDueDate(loan.issueDate, tenure);
-          needsUpdate = true;
-        }
-      }
-
-      if (needsUpdate) {
-        try {
-          await Loan.updateOne({ _id: loan._id }, { dueDate: loan.dueDate });
-        } catch (e) {
-          console.error('Failed to auto-update loan dueDate:', e);
         }
       }
       return loan;
-    }));
+    });
 
-    res.json(updatedLoans);
+    res.json(fixedLoans);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch loans.' });
   }

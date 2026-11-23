@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Settings, Store, Save, CheckCircle2, IndianRupee, Percent, Zap, TrendingUp, TrendingDown, FileText, Check, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, Store, Save, CheckCircle2, IndianRupee, Percent, Zap, TrendingUp, TrendingDown, FileText, Check, AlertTriangle, Coins, Sparkles, RefreshCw } from 'lucide-react';
 import { SHOP_INFO } from '../data.js';
+import { bullionApi } from '../api.js';
+import BullionRatesModal from './BullionRatesModal.jsx';
 
 export default function SettingsPage({ goldRate, onUpdateGoldRate, silverRate, onUpdateSilverRate }) {
   const [shopInfo, setShopInfo] = useState({ ...SHOP_INFO });
@@ -11,6 +13,22 @@ export default function SettingsPage({ goldRate, onUpdateGoldRate, silverRate, o
   const [error, setError] = useState('');
   const [rateChanged, setRateChanged] = useState(false);
   const [silverRateChanged, setSilverRateChanged] = useState(false);
+  const [showBullionModal, setShowBullionModal] = useState(false);
+  const [ibjaRates, setIbjaRates] = useState(null);
+
+  useEffect(() => {
+    setRate(goldRate);
+  }, [goldRate]);
+
+  useEffect(() => {
+    setSilverRateInput(silverRate);
+  }, [silverRate]);
+
+  useEffect(() => {
+    bullionApi.getLatest().then(res => {
+      if (res && res.success) setIbjaRates(res);
+    }).catch(() => {});
+  }, []);
 
   const handleSaveRate = () => {
     setError('');
@@ -88,6 +106,59 @@ export default function SettingsPage({ goldRate, onUpdateGoldRate, silverRate, o
           <span>{error}</span>
         </div>
       )}
+
+      {/* ── Live IBJA Benchmark Rates Integration Banner ── */}
+      <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-600/10 border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shrink-0 shadow-xs">
+            <Coins size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-gray-900 text-sm">India Bullion Benchmark Rates (IBJA)</h3>
+              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Live Free API</span>
+            </div>
+            <p className="text-xs text-gray-600 mt-0.5">
+              {ibjaRates?.normalized?.gold22k 
+                ? `Today's IBJA 22K: ₹${Number(ibjaRates.normalized.gold22k.perGram).toLocaleString('en-IN')}/g • Silver: ₹${Number(ibjaRates.normalized.silver999?.perGram || 0).toLocaleString('en-IN')}/g`
+                : 'Live benchmark rates for 24K, 22K (916), 18K, 14K & Silver directly from IBJA'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowBullionModal(true)}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+          >
+            <Sparkles size={13} className="text-amber-600" />
+            <span>View All IBJA Rates</span>
+          </button>
+          {ibjaRates?.normalized?.gold22k && (
+            <button
+              type="button"
+              onClick={() => {
+                const g = Math.round(ibjaRates.normalized.gold22k.perGram);
+                const s = Math.round(ibjaRates.normalized.silver999?.perGram || 85);
+                setRate(g);
+                setSilverRateInput(s);
+                onUpdateGoldRate(g);
+                onUpdateSilverRate(s);
+                setRateChanged(false);
+                setSilverRateChanged(false);
+                setSuccess(`Synchronized store rates from IBJA: Gold 22K ₹${g}/g, Silver ₹${s}/g`);
+                setTimeout(() => setSuccess(''), 4000);
+              }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Sync store rates directly to today's IBJA 22K and Silver benchmark"
+            >
+              <RefreshCw size={13} />
+              <span>Sync to Store</span>
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* ── Metal Rates Row (Side by Side) ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -344,6 +415,22 @@ export default function SettingsPage({ goldRate, onUpdateGoldRate, silverRate, o
           </div>
         </div>
       </div>
+
+      {showBullionModal && (
+        <BullionRatesModal
+          onClose={() => setShowBullionModal(false)}
+          onRatesApplied={(newGold, newSilver) => {
+            if (newGold) {
+              setRate(newGold);
+              onUpdateGoldRate(newGold);
+            }
+            if (newSilver) {
+              setSilverRateInput(newSilver);
+              onUpdateSilverRate(newSilver);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -3,11 +3,20 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
-dotenv.config();
+dotenv.config({ path: require('path').join(__dirname, '.env') });
+
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET is required. Set it in backend/.env or the environment.');
+}
 
 const app = express();
+const compression = require('compression');
 
-// ─── Middleware ────────────────────────────────────────────────────────────
+// ─── High-Performance Compression & Middleware ────────────────────────────
+app.use(compression({
+  threshold: 1024, // compress responses above 1KB for faster network transfer
+  level: 6,
+}));
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 
@@ -20,6 +29,7 @@ app.use('/api/staff',    require('./routes/staff'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/schemes',  require('./routes/schemes'));
 app.use('/api/activity-logs', require('./routes/activityLogs'));
+app.use('/api/bullion',  require('./routes/bullionRoutes'));
 
 // ─── Health check ─────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.json({ message: 'VJS Billing Backend is running ✅' }));
@@ -72,6 +82,7 @@ mongoose
   .then(async () => {
      console.log('✅ Connected to MongoDB (vjs_billing)');
      await ensureSystemAdmin();          // ← runs every startup, safe to repeat
+     require('./jobs/bullionCron');       // ← schedules 2-hour updates and initializes rates on boot
      app.listen(PORT, () => {
        console.log(`🚀 Backend server running at http://localhost:${PORT}`);
      });

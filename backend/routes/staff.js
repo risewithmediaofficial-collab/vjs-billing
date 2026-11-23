@@ -13,7 +13,7 @@ router.get('/', auth, async (req, res) => {
   try {
     const filter = {};
     if (req.user.role !== 'Admin') filter.storeId = req.user.storeId;
-    const staff = await User.find(filter, '-pin').sort({ createdAt: -1 });
+    const staff = await User.find(filter, '-pin').sort({ createdAt: -1 }).lean();
     res.json(staff);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch staff.' });

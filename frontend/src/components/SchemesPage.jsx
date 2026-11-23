@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import {
   Plus, Search, X, Calendar, User, Phone, MapPin,
   CreditCard, CheckCircle2, AlertCircle, TrendingUp, HelpCircle, Loader2, Printer, ChevronDown,
-  Sparkles, Gift, ShieldCheck, Award, BookOpen, Layers, Info, Coins
+  Sparkles, Gift, ShieldCheck, Award, BookOpen, Layers, Info, Coins,
+  ArrowUpDown, SlidersHorizontal, RotateCcw, CalendarRange
 } from 'lucide-react';
 import {
   formatCurrency, formatDate, SHOP_INFO,
@@ -396,8 +397,11 @@ function SchemeTermsModal({ onClose, shopInfo = {} }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="w-full max-w-4xl bg-white rounded-2xl p-4 sm:p-6 shadow-2xl border border-gray-200 animate-fade-in my-auto max-h-[90vh] flex flex-col">
+    <div 
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-3xl sm:max-w-4xl bg-white h-full shadow-2xl flex flex-col border-l border-gray-200 overflow-hidden animate-drawer-right rounded-l-2xl sm:rounded-l-3xl p-4 sm:p-6">
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-3 border-b border-gray-200 gap-3 shrink-0">
           <div className="flex items-center gap-3">
@@ -598,10 +602,13 @@ function SchemeReceipt({ scheme, onClose, goldRate, silverRate }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-6 px-3 sm:px-4">
-      <div className="w-full max-w-3xl bg-white rounded-2xl p-4 sm:p-6 shadow-2xl border border-gray-200 animate-fade-in my-auto">
+    <div 
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-3xl sm:max-w-4xl bg-white h-full shadow-2xl flex flex-col border-l border-gray-200 overflow-hidden animate-drawer-right rounded-l-2xl sm:rounded-l-3xl p-4 sm:p-6">
         {/* ── Modal Header ── */}
-        <div className="flex items-center justify-between pb-3 border-b border-gray-200 gap-3">
+        <div className="flex items-center justify-between pb-3 border-b border-gray-200 gap-3 shrink-0">
           <div>
             <h2 className="text-gray-900 font-bold text-lg sm:text-xl">
               Gold & Silver Savings Scheme Passbook & Receipt
@@ -709,6 +716,11 @@ export default function SchemesPage({
 }) {
   const [activeTab, setActiveTab] = useState('active'); // active, redeemable, completed
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState('All'); // All, Today, This Month, This Year, Custom
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [metalFilter, setMetalFilter] = useState('all'); // all, gold, silver
+  const [sortBy, setSortBy] = useState('date_desc'); // date_desc, date_asc, monthly_desc, monthly_asc, paid_desc, name_asc
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -720,7 +732,6 @@ export default function SchemesPage({
     setExpandedSchemes(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  
   // Enroll Form State
   const [enrollForm, setEnrollForm] = useState({
     customerName: '',
@@ -752,22 +763,99 @@ export default function SchemesPage({
   // Lock screen scroll when any scheme popup / modal / form is active
   useScrollLock(showEnrollModal || showPayModal || showTermsModal || !!confirmAction || !!previewScheme);
 
-  // Filtering enrollments
-  const filteredSchemes = schemes.filter(s => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch =
-      s.customerName.toLowerCase().includes(q) ||
-      s.customerPhone.includes(q) ||
-      s.schemeName.toLowerCase().includes(q);
+  const deferredSearch = useDeferredValue(searchQuery);
 
-    if (!matchesSearch) return false;
+  // Filtering & Sorting schemes
+  const { filteredSchemes, totalFilteredCollected, totalFilteredTarget } = useMemo(() => {
+    const list = schemes.filter(s => {
+      // 1. Search Query
+      if (deferredSearch.trim()) {
+        const q = deferredSearch.toLowerCase();
+        const matchesSearch =
+          (s.customerName || '').toLowerCase().includes(q) ||
+          (s.customerPhone || '').includes(q) ||
+          (s.schemeName || '').toLowerCase().includes(q);
+        if (!matchesSearch) return false;
+      }
 
-    if (activeTab === 'active') return s.status === 'active';
-    if (activeTab === 'redeemable') return s.status === 'redeemable';
-    if (activeTab === 'completed') return s.status === 'completed' || s.status === 'cancelled';
-    if (activeTab === 'pending') return s.status === 'redeem_pending' || s.status === 'cancel_pending';
-    return true;
-  });
+      // 2. Active Tab Status
+      if (activeTab === 'active' && s.status !== 'active') return false;
+      if (activeTab === 'redeemable' && s.status !== 'redeemable') return false;
+      if (activeTab === 'completed' && s.status !== 'completed' && s.status !== 'cancelled') return false;
+      if (activeTab === 'pending' && s.status !== 'redeem_pending' && s.status !== 'cancel_pending') return false;
+
+      // 3. Metal Filter
+      if (metalFilter === 'gold') {
+        const isSilver = s.metalType === 'silver' || (s.schemeName || '').toLowerCase().includes('silver');
+        if (isSilver) return false;
+      } else if (metalFilter === 'silver') {
+        const isSilver = s.metalType === 'silver' || (s.schemeName || '').toLowerCase().includes('silver');
+        if (!isSilver) return false;
+      }
+
+      // 4. Date Filter (Enrollment Date)
+      if (dateFilter !== 'All') {
+        const enrollDateStr = s.createdAt || s.enrolledAt;
+        if (!enrollDateStr) return false;
+        const d = new Date(enrollDateStr);
+        const now = new Date();
+
+        if (dateFilter === 'Today') {
+          if (d.toDateString() !== now.toDateString()) return false;
+        } else if (dateFilter === 'This Month') {
+          if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return false;
+        } else if (dateFilter === 'This Year') {
+          if (d.getFullYear() !== now.getFullYear()) return false;
+        } else if (dateFilter === 'Custom') {
+          if (startDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            if (d < start) return false;
+          }
+          if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            if (d > end) return false;
+          }
+        }
+      }
+
+      return true;
+    }).sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.enrolledAt || 0);
+      const dateB = new Date(b.createdAt || b.enrolledAt || 0);
+      const paidA = (a.payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+      const paidB = (b.payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+
+      if (sortBy === 'date_asc') return dateA - dateB;
+      if (sortBy === 'monthly_desc') return (b.monthlyAmount || 0) - (a.monthlyAmount || 0);
+      if (sortBy === 'monthly_asc') return (a.monthlyAmount || 0) - (b.monthlyAmount || 0);
+      if (sortBy === 'paid_desc') return paidB - paidA;
+      if (sortBy === 'name_asc') return (a.customerName || '').localeCompare(b.customerName || '');
+      // Default: date_desc (newest enrollment first)
+      return dateB - dateA;
+    });
+
+    const collected = list.reduce((sum, s) => {
+      const paid = (s.payments || []).reduce((pSum, p) => pSum + (p.amount || 0), 0);
+      return sum + paid;
+    }, 0);
+
+    const target = list.reduce((sum, s) => sum + ((s.monthlyAmount || 0) * (s.totalMonths || 12)), 0);
+
+    return { filteredSchemes: list, totalFilteredCollected: collected, totalFilteredTarget: target };
+  }, [schemes, deferredSearch, activeTab, metalFilter, dateFilter, startDate, endDate, sortBy]);
+
+  const hasActiveFilters = searchQuery !== '' || dateFilter !== 'All' || startDate !== '' || endDate !== '' || metalFilter !== 'all' || sortBy !== 'date_desc';
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setDateFilter('All');
+    setStartDate('');
+    setEndDate('');
+    setMetalFilter('all');
+    setSortBy('date_desc');
+  };
 
   const handleOpenPay = (scheme) => {
     // Find next unpaid month index
@@ -977,17 +1065,160 @@ export default function SchemesPage({
         ))}
       </div>
 
-      {/* Search Bar */}
-      <div className="relative">
-        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search by customer name, phone, or scheme name..."
-          className="w-full border border-gray-200 bg-white rounded-xl pl-11 pr-4 py-3 text-gray-800 text-sm
-            placeholder-gray-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all shadow-sm"
-        />
+      {/* Filters & Sorting Panel */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-3.5 sm:p-5 shadow-sm space-y-3.5">
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by customer name, phone, or scheme name..."
+              className="w-full border border-gray-200 bg-gray-50 rounded-xl pl-10 pr-4 py-2 sm:py-2.5 text-gray-800 text-xs sm:text-sm
+                placeholder-gray-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all"
+            />
+          </div>
+
+          {/* Metal Filter */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-1">Metal:</span>
+            <div className="flex bg-gray-100 p-1 rounded-xl gap-1 text-xs font-semibold">
+              <button
+                onClick={() => setMetalFilter('all')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  metalFilter === 'all' ? 'bg-white text-gray-900 shadow-2xs font-bold' : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setMetalFilter('gold')}
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                  metalFilter === 'gold' ? 'bg-amber-500 text-white shadow-2xs font-bold' : 'text-gray-500 hover:text-amber-700'
+                }`}
+              >
+                <Coins size={12} /> Gold
+              </button>
+              <button
+                onClick={() => setMetalFilter('silver')}
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                  metalFilter === 'silver' ? 'bg-slate-700 text-white shadow-2xs font-bold' : 'text-gray-500 hover:text-slate-800'
+                }`}
+              >
+                <Sparkles size={12} /> Silver
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Date Filter & Sort Controls */}
+        <div className="pt-2 border-t border-gray-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          {/* Date Range Presets */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+              <Calendar size={13} className="text-amber-600" /> Enrolled:
+            </span>
+            {[
+              { id: 'All', label: 'All Time' },
+              { id: 'Today', label: 'Today' },
+              { id: 'This Month', label: 'This Month' },
+              { id: 'This Year', label: 'This Year' },
+              { id: 'Custom', label: 'Date to Date' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setDateFilter(tab.id)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  dateFilter === tab.id
+                    ? 'bg-amber-500 text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Sorting Dropdown */}
+          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+              <ArrowUpDown size={13} className="text-amber-600" /> Sort:
+            </span>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+            >
+              <option value="date_desc">Enrolled: Newest First</option>
+              <option value="date_asc">Enrolled: Oldest First</option>
+              <option value="monthly_desc">Monthly Installment: High to Low</option>
+              <option value="monthly_asc">Monthly Installment: Low to High</option>
+              <option value="paid_desc">Total Paid: High to Low</option>
+              <option value="name_asc">Customer Name: A to Z</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Custom Date Range Pickers (shown when Custom is active) */}
+        {dateFilter === 'Custom' && (
+          <div className="flex items-center gap-3 p-3 bg-amber-50/60 border border-amber-200 rounded-xl flex-wrap text-xs animate-fade-in">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600 font-bold">From Date:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-850 font-medium focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600 font-bold">To Date:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                className="bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-850 font-medium focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+                className="text-[11px] text-amber-800 font-bold hover:underline ml-auto"
+              >
+                Clear Dates
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* KPI Summary / Active Filters Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 text-xs">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-gray-500">
+              Showing <strong className="text-gray-900 font-mono">{filteredSchemes.length}</strong> schemes
+            </span>
+            <span className="text-gray-300">•</span>
+            <span className="text-gray-500">
+              Total Collected: <strong className="text-emerald-700 font-mono font-bold">{formatCurrency(totalFilteredCollected)}</strong>
+            </span>
+            <span className="text-gray-300">•</span>
+            <span className="text-gray-500">
+              Total Target: <strong className="text-gray-900 font-mono font-bold">{formatCurrency(totalFilteredTarget)}</strong>
+            </span>
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              onClick={handleResetFilters}
+              className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:text-amber-900 font-semibold transition-colors"
+            >
+              <RotateCcw size={12} />
+              Reset All Filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Schemes List View */}
@@ -1296,8 +1527,11 @@ export default function SchemesPage({
 
       {/* ── Enrollment Modal ─────────────────────────────────────────────────── */}
       {showEnrollModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <form onSubmit={handleEnrollSubmit} className="w-full max-w-lg bg-white border border-gray-200 rounded-2xl shadow-2xl animate-fade-in text-gray-800 flex flex-col max-h-[90vh]">
+        <div 
+          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+          onClick={(e) => { if (e.target === e.currentTarget && !enrollLoading) setShowEnrollModal(false); }}
+        >
+          <form onSubmit={handleEnrollSubmit} className="w-full max-w-lg sm:max-w-xl bg-white h-full shadow-2xl border-l border-gray-200 animate-drawer-right rounded-l-2xl sm:rounded-l-3xl text-gray-800 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 shrink-0">
               <div>
                 <h2 className="text-gray-800 font-bold text-lg">New Scheme Enrollment</h2>
@@ -1524,8 +1758,12 @@ export default function SchemesPage({
 
       {/* ── Record Payment Modal ────────────────────────────────────────────── */}
       {showPayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <form onSubmit={handlePaySubmit} className="w-full max-w-sm bg-white border border-gray-200 rounded-2xl p-6 shadow-2xl animate-fade-in text-gray-800">
+        <div 
+          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+          onClick={(e) => { if (e.target === e.currentTarget && !payLoading) setShowPayModal(false); }}
+        >
+          <form onSubmit={handlePaySubmit} className="w-full max-w-sm sm:max-w-md bg-white h-full shadow-2xl border-l border-gray-200 animate-drawer-right rounded-l-2xl sm:rounded-l-3xl text-gray-800 flex flex-col justify-between overflow-hidden p-6">
+            <div>
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
               <div>
                 <h2 className="text-gray-800 font-bold text-base">Record Installment Payment</h2>
@@ -1534,7 +1772,7 @@ export default function SchemesPage({
               <button
                 type="button"
                 onClick={() => setShowPayModal(false)}
-                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -1562,6 +1800,7 @@ export default function SchemesPage({
                 />
               </div>
             </div>
+            </div>
 
             <div className="flex gap-2.5 mt-5 pt-3 border-t border-gray-100">
               <button
@@ -1587,9 +1826,13 @@ export default function SchemesPage({
 
       {/* ─── Scheme Action Confirmation Modal ─── */}
       {confirmAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-gray-800">
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 w-full max-w-sm animate-fade-in">
-            <div className="flex items-center gap-3 mb-4">
+        <div 
+          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity"
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmAction(null); }}
+        >
+          <div className="bg-white h-full shadow-2xl border-l border-gray-200 p-6 w-full max-w-sm sm:max-w-md animate-drawer-right rounded-l-2xl sm:rounded-l-3xl flex flex-col justify-between">
+            <div>
+            <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${confirmAction.type === 'cancel' ? 'bg-red-100' : 'bg-emerald-100'}`}>
                 {confirmAction.type === 'cancel' ? (
                   <AlertCircle size={20} className="text-red-600" />
@@ -1612,8 +1855,9 @@ export default function SchemesPage({
                 <>Are you sure you want to redeem the savings scheme for <span className="font-bold text-gray-800">"{confirmAction.scheme.customerName}"</span>? This will close the scheme and mark it as completed.</>
               )}
             </p>
+            </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-4 border-t border-gray-100">
               <button
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-650 font-semibold text-sm hover:bg-gray-50 transition-colors"

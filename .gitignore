@@ -9,6 +9,7 @@ build/
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # Logs
 *.log
@@ -20,3 +21,7 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# Testing & Artifacts
+.playwright-mcp/
+*.png
